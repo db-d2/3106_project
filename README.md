@@ -28,9 +28,9 @@ data/
   processed/frac*_seed*/   Generated PU splits
 
 blog/
-  index.html               The deliverable (self-contained HTML, no dependencies)
+  index.html               The deliverable
 
-checkpoints/               Saved model weights (not in git)
+checkpoints/               Saved model weights
 experiments/logs/          Experiment result CSVs
 figures/                   Generated figures for the blog
 quality_reports/           Automated review reports

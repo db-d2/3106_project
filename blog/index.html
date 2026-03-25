@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Here Be Dragons: When Does PU Learning Work for Vulnerability Detection?</title>
+    <style>
+        /* === Dark Mode Base === */
+        :root {
+            --bg: #0d1117;
+            --surface: #161b22;
+            --surface-raised: #1c2129;
+            --border: #30363d;
+            --text: #e6edf3;
+            --text-muted: #8b949e;
+            --accent: #58a6ff;
+            --accent-hover: #79c0ff;
+            --green: #3fb950;
+            --orange: #d29922;
+            --red: #f85149;
+            --purple: #bc8cff;
+            --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+            --font-mono: "SF Mono", "Fira Code", "Fira Mono", Menlo, Consolas, monospace;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            font-family: var(--font-sans);
+            font-size: 17px;
+            line-height: 1.7;
+        }
+
+        /* === Layout === */
+        .container {
+            max-width: 820px;
+            margin: 0 auto;
+            padding: 40px 24px;
+        }
+
+        /* === Header === */
+        .header {
+            text-align: center;
+            padding: 60px 0 40px;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 48px;
+        }
+        .header h1 {
+            font-size: 2.2em;
+            font-weight: 700;
+            line-height: 1.2;
+            margin-bottom: 16px;
+            background: linear-gradient(135deg, var(--accent), var(--purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .header .subtitle {
+            color: var(--text-muted);
+            font-size: 1.05em;
+            margin-bottom: 12px;
+        }
+        .header .meta {
+            color: var(--text-muted);
+            font-size: 0.85em;
+        }
+        .header .meta a { color: var(--accent); text-decoration: none; }
+        .header .meta a:hover { color: var(--accent-hover); text-decoration: underline; }
+
+        /* === Navigation === */
+        nav {
+            position: sticky;
+            top: 0;
+            background: var(--bg);
+            border-bottom: 1px solid var(--border);
+            z-index: 100;
+            padding: 12px 0;
+            margin: -16px -24px 40px;
+            padding-left: 24px;
+            padding-right: 24px;
+            backdrop-filter: blur(8px);
+            background: rgba(13, 17, 23, 0.85);
+        }
+        nav a {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.85em;
+            margin-right: 24px;
+            transition: color 0.2s;
+        }
+        nav a:hover { color: var(--accent); }
+
+        /* === Typography === */
+        h2 {
+            font-size: 1.6em;
+            font-weight: 600;
+            margin-top: 56px;
+            margin-bottom: 20px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border);
+        }
+        h3 {
+            font-size: 1.2em;
+            font-weight: 600;
+            margin-top: 32px;
+            margin-bottom: 12px;
+            color: var(--accent);
+        }
+        p { margin-bottom: 16px; }
+        a { color: var(--accent); text-decoration: none; }
+        a:hover { color: var(--accent-hover); text-decoration: underline; }
+
+        /* === Callout Boxes === */
+        .callout {
+            background: var(--surface);
+            border-left: 4px solid var(--accent);
+            border-radius: 0 8px 8px 0;
+            padding: 20px 24px;
+            margin: 28px 0;
+        }
+        .callout.hypothesis {
+            border-left-color: var(--purple);
+            background: linear-gradient(135deg, rgba(188,140,255,0.08), rgba(88,166,255,0.05));
+        }
+        .callout.key-insight {
+            border-left-color: var(--green);
+        }
+        .callout.warning {
+            border-left-color: var(--orange);
+        }
+        .callout-label {
+            font-size: 0.75em;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 8px;
+        }
+        .callout.hypothesis .callout-label { color: var(--purple); }
+        .callout.key-insight .callout-label { color: var(--green); }
+        .callout.warning .callout-label { color: var(--orange); }
+
+        /* === Code === */
+        code {
+            font-family: var(--font-mono);
+            background: var(--surface);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.88em;
+            color: var(--accent);
+        }
+
+        /* === Figures === */
+        figure {
+            margin: 36px 0;
+            text-align: center;
+        }
+        figure svg {
+            max-width: 100%;
+        }
+        figcaption {
+            color: var(--text-muted);
+            font-size: 0.85em;
+            margin-top: 12px;
+            font-style: italic;
+        }
+
+        /* === Tables === */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 24px 0;
+            font-size: 0.92em;
+        }
+        th, td {
+            padding: 10px 14px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+        th {
+            font-weight: 600;
+            color: var(--text-muted);
+            font-size: 0.85em;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        tr:hover { background: var(--surface); }
+
+        /* === Method Cards === */
+        .method-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin: 24px 0;
+        }
+        .method-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 20px;
+        }
+        .method-card h4 {
+            font-size: 1em;
+            margin-bottom: 8px;
+        }
+        .method-card .tag {
+            display: inline-block;
+            font-size: 0.7em;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 2px 8px;
+            border-radius: 12px;
+            margin-bottom: 8px;
+        }
+        .tag.upper-bound { background: rgba(63,185,80,0.15); color: var(--green); }
+        .tag.lower-bound { background: rgba(248,81,73,0.15); color: var(--red); }
+        .tag.risk-estimator { background: rgba(88,166,255,0.15); color: var(--accent); }
+        .tag.pseudo-label { background: rgba(188,140,255,0.15); color: var(--purple); }
+        .method-card p {
+            font-size: 0.88em;
+            color: var(--text-muted);
+            margin: 0;
+        }
+
+        /* === Stat Badges === */
+        .stats-row {
+            display: flex;
+            gap: 16px;
+            margin: 24px 0;
+            flex-wrap: wrap;
+        }
+        .stat-badge {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 16px 20px;
+            flex: 1;
+            min-width: 140px;
+            text-align: center;
+        }
+        .stat-badge .number {
+            font-size: 1.8em;
+            font-weight: 700;
+            color: var(--accent);
+            font-family: var(--font-mono);
+        }
+        .stat-badge .label {
+            font-size: 0.78em;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        /* === References === */
+        .references {
+            margin-top: 48px;
+            padding-top: 24px;
+            border-top: 1px solid var(--border);
+        }
+        .references ol {
+            padding-left: 24px;
+            font-size: 0.85em;
+            color: var(--text-muted);
+            line-height: 2;
+        }
+
+        /* === Placeholder sections === */
+        .placeholder {
+            background: var(--surface);
+            border: 2px dashed var(--border);
+            border-radius: 8px;
+            padding: 40px;
+            text-align: center;
+            color: var(--text-muted);
+            margin: 24px 0;
+        }
+
+        /* === Responsive === */
+        @media (max-width: 640px) {
+            .header h1 { font-size: 1.6em; }
+            .method-grid { grid-template-columns: 1fr; }
+            .stats-row { flex-direction: column; }
+            nav a { margin-right: 12px; font-size: 0.8em; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+
+    <!-- Header -->
+    <div class="header">
+        <h1>Here Be Dragons: When Does PU Learning Work for Vulnerability Detection?</h1>
+        <div class="subtitle">A systematic investigation of positive-unlabeled learning on code representations</div>
+        <div class="meta">
+            David Benson &middot; STAT 3106 Applied Machine Learning &middot; Spring 2026
+        </div>
+    </div>
+
+    <!-- Navigation -->
+    <nav>
+        <a href="#introduction">Introduction</a>
+        <a href="#background">Background</a>
+        <a href="#approach">Approach</a>
+        <a href="#experiments">Experiments</a>
+        <a href="#results">Results</a>
+        <a href="#discussion">Discussion</a>
+        <a href="#references">References</a>
+    </nav>
+
+    <!-- ============================================ -->
+    <!-- INTRODUCTION -->
+    <!-- ============================================ -->
+    <section id="introduction">
+        <h2>Introduction</h2>
+
+        <p>Software vulnerability detection is typically framed as a binary classification problem. Given a function's source code, predict whether it contains a security vulnerability. This formulation assumes reliable positive and negative labels. In practice, that assumption falls apart.</p>
+
+        <p>Functions confirmed as vulnerable, through CVE reports, security advisories, and patch commits, are trustworthy positives. But "benign" labels are assigned by exclusion. A function is called safe simply because nobody has found a vulnerability in it yet.</p>
+
+        <div class="callout">
+            <div class="callout-label">A note on security terminology</div>
+            Two acronyms come up repeatedly in vulnerability detection and they are easy to conflate. A CWE (Common Weakness Enumeration) is a category of bug. CWE-119, for example, covers buffer overflows; CWE-362 covers race conditions. Think of CWEs as the taxonomy. A CVE (Common Vulnerabilities and Exposures) is a specific, publicly disclosed instance of a bug in a particular piece of software. CVE-2014-0160 is the Heartbleed bug. It is one instance of CWE-119. In the PrimeVul dataset, every vulnerable function has an associated CVE (the specific disclosure) and one or more CWEs (the type of flaw). When I later analyze performance "by CWE type," I am grouping vulnerabilities by the nature of the bug, not by individual disclosures.
+        </div>
+
+        <!-- CWE Distribution Bar Chart -->
+        <figure>
+            <svg viewBox="0 0 800 530" xmlns="http://www.w3.org/2000/svg" style="max-width: 780px; font-family: -apple-system, BlinkMacSystemFont, sans-serif;">
+                <!-- Title -->
+                <text x="400" y="24" text-anchor="middle" fill="#e6edf3" font-size="17" font-weight="600">Top CWE types in PrimeVul training data (vulnerable functions only)</text>
+
+                <!-- Rows: 36px tall, labels at 15px, counts at 14px -->
+                <!-- CWE-119: 679 -->
+                <text x="235" y="64" text-anchor="end" fill="#8b949e" font-size="15">CWE-119 Buffer Overflow</text>
+                <rect x="240" y="50" width="440" height="22" rx="4" fill="#3fb950" opacity="0.8"/>
+                <text x="688" y="66" text-anchor="start" fill="#8b949e" font-size="14">679</text>
+
+                <!-- CWE-125: 538 -->
+                <text x="235" y="100" text-anchor="end" fill="#8b949e" font-size="15">CWE-125 Out-of-Bounds Read</text>
+                <rect x="240" y="86" width="348" height="22" rx="4" fill="#3fb950" opacity="0.7"/>
+                <text x="596" y="102" text-anchor="start" fill="#8b949e" font-size="14">538</text>
+
+                <!-- CWE-20: 442 -->
+                <text x="235" y="136" text-anchor="end" fill="#8b949e" font-size="15">CWE-20 Input Validation</text>
+                <rect x="240" y="122" width="286" height="22" rx="4" fill="#58a6ff" opacity="0.7"/>
+                <text x="534" y="138" text-anchor="start" fill="#8b949e" font-size="14">442</text>
+
+                <!-- CWE-787: 318 -->
+                <text x="235" y="172" text-anchor="end" fill="#8b949e" font-size="15">CWE-787 Out-of-Bounds Write</text>
+                <rect x="240" y="158" width="206" height="22" rx="4" fill="#3fb950" opacity="0.65"/>
+                <text x="454" y="174" text-anchor="start" fill="#8b949e" font-size="14">318</text>
+
+                <!-- CWE-200: 285 -->
+                <text x="235" y="208" text-anchor="end" fill="#8b949e" font-size="15">CWE-200 Info Exposure</text>
+                <rect x="240" y="194" width="184" height="22" rx="4" fill="#bc8cff" opacity="0.6"/>
+                <text x="432" y="210" text-anchor="start" fill="#8b949e" font-size="14">285</text>
+
+                <!-- CWE-476: 272 -->
+                <text x="235" y="244" text-anchor="end" fill="#8b949e" font-size="15">CWE-476 NULL Dereference</text>
+                <rect x="240" y="230" width="176" height="22" rx="4" fill="#58a6ff" opacity="0.6"/>
+                <text x="424" y="246" text-anchor="start" fill="#8b949e" font-size="14">272</text>
+
+                <!-- CWE-416: 228 -->
+                <text x="235" y="280" text-anchor="end" fill="#8b949e" font-size="15">CWE-416 Use After Free</text>
+                <rect x="240" y="266" width="148" height="22" rx="4" fill="#3fb950" opacity="0.55"/>
+                <text x="396" y="282" text-anchor="start" fill="#8b949e" font-size="14">228</text>
+
+                <!-- CWE-190: 184 -->
+                <text x="235" y="316" text-anchor="end" fill="#8b949e" font-size="15">CWE-190 Integer Overflow</text>
+                <rect x="240" y="302" width="119" height="22" rx="4" fill="#3fb950" opacity="0.5"/>
+                <text x="367" y="318" text-anchor="start" fill="#8b949e" font-size="14">184</text>
+
+                <!-- CWE-264: 171 -->
+                <text x="235" y="352" text-anchor="end" fill="#8b949e" font-size="15">CWE-264 Permissions/Access</text>
+                <rect x="240" y="338" width="111" height="22" rx="4" fill="#bc8cff" opacity="0.5"/>
+                <text x="359" y="354" text-anchor="start" fill="#8b949e" font-size="14">171</text>
+
+                <!-- CWE-362: 83 -->
+                <text x="235" y="388" text-anchor="end" fill="#8b949e" font-size="15">CWE-362 Race Condition</text>
+                <rect x="240" y="374" width="54" height="22" rx="4" fill="#d29922" opacity="0.6"/>
+                <text x="302" y="390" text-anchor="start" fill="#8b949e" font-size="14">83</text>
+
+                <!-- Legend -->
+                <rect x="240" y="430" width="14" height="14" rx="3" fill="#3fb950" opacity="0.7"/>
+                <text x="262" y="443" fill="#8b949e" font-size="14">Memory safety (syntactically distinctive patterns)</text>
+                <rect x="240" y="454" width="14" height="14" rx="3" fill="#bc8cff" opacity="0.6"/>
+                <text x="262" y="467" fill="#8b949e" font-size="14">Semantic/logic (harder to detect from syntax alone)</text>
+                <rect x="240" y="478" width="14" height="14" rx="3" fill="#d29922" opacity="0.6"/>
+                <text x="262" y="491" fill="#8b949e" font-size="14">Concurrency (requires reasoning about execution order)</text>
+            </svg>
+            <figcaption>Figure 2: Distribution of the top 10 CWE types among vulnerable functions in PrimeVul training data. Memory safety bugs dominate. The color coding previews a question I return to later: do syntactically obvious vulnerability types (green) respond differently to PU learning than semantic or concurrency bugs (purple, yellow)?</figcaption>
+        </figure>
+
+        <p>In real-world application security workflows, the process for generating labels looks like this: a security team runs static analysis tools against the codebase written by their internal engineering teams. These tools flag code patterns that match known CWE categories. The tools are intentionally aggressive and produce a lot of false positives. An application security expert then triages each finding, reads the surrounding code, traces data flows, and determines whether the flagged pattern is actually exploitable in context. This process takes 15&ndash;60 minutes per finding.</p>
+
+        <!-- Triage Funnel -->
+        <figure>
+            <svg viewBox="0 0 680 400" xmlns="http://www.w3.org/2000/svg" style="max-width: 660px; font-family: -apple-system, BlinkMacSystemFont, sans-serif;">
+                <!-- Stage 1: Static scan output (widest) -->
+                <polygon points="50,30 620,30 575,100 95,100" fill="rgba(88,166,255,0.15)" stroke="#58a6ff" stroke-width="1.5"/>
+                <text x="335" y="56" text-anchor="middle" fill="#e6edf3" font-size="17" font-weight="600">Static scan flags ~10,000 findings</text>
+                <text x="335" y="80" text-anchor="middle" fill="#8b949e" font-size="14">Automated. Matches code against known CWE patterns.</text>
+
+                <!-- Stage 2: Expert triage -->
+                <polygon points="95,108 575,108 520,178 150,178" fill="rgba(188,140,255,0.12)" stroke="#bc8cff" stroke-width="1.5"/>
+                <text x="335" y="134" text-anchor="middle" fill="#e6edf3" font-size="17" font-weight="600">Expert reviews ~2,000</text>
+                <text x="335" y="158" text-anchor="middle" fill="#8b949e" font-size="14">Manual. 15-60 min each. Clear cases only.</text>
+
+                <!-- Stage 3: Labeled -->
+                <polygon points="150,186 520,186 475,256 195,256" fill="rgba(63,185,80,0.12)" stroke="#3fb950" stroke-width="1.5"/>
+                <text x="335" y="212" text-anchor="middle" fill="#e6edf3" font-size="17" font-weight="600">~1,500 get a label</text>
+                <text x="335" y="236" text-anchor="middle" fill="#8b949e" font-size="14">"Confirmed," "false positive," or "not exploitable"</text>
+
+                <!-- The unlabeled remainder -->
+                <rect x="100" y="278" width="470" height="72" rx="8" fill="rgba(248,81,73,0.08)" stroke="#f85149" stroke-width="1.5" stroke-dasharray="6,3"/>
+                <text x="335" y="308" text-anchor="middle" fill="#f85149" font-size="17" font-weight="600">~8,500 remain unlabeled</text>
+                <text x="335" y="332" text-anchor="middle" fill="#8b949e" font-size="14">Mix of real vulnerabilities and false alarms. This is U.</text>
+
+                <!-- Arrow annotation -->
+                <line x1="545" y1="55" x2="590" y2="55" stroke="#8b949e" stroke-width="1"/>
+                <line x1="590" y1="55" x2="590" y2="314" stroke="#8b949e" stroke-width="1" stroke-dasharray="4,3"/>
+                <line x1="590" y1="314" x2="525" y2="314" stroke="#8b949e" stroke-width="1"/>
+                <text x="608" y="190" fill="#8b949e" font-size="14" transform="rotate(90, 608, 190)">85% drop-off</text>
+            </svg>
+            <figcaption>Figure 3: The triage funnel. Static analysis tools are deliberately noisy, and expert review is expensive. Most findings never get labeled, producing the positive-unlabeled structure that motivates this project.</figcaption>
+        </figure>
+
+        <p>The result is the PU structure shown in Figure 4: a small set of confirmed positives and a large pool of unlabeled data with no confirmed negatives. PU learning has been studied for vision and tabular data <a href="#ref_12">[12]</a>, and PILOT <a href="#ref_4">[4]</a> recently demonstrated it can work for vulnerability detection. But a fundamental question remains unanswered:</p>
+
+        <div class="callout hypothesis">
+            <div class="callout-label">Hypothesis</div>
+            There exists a minimum number of labeled positives below which PU learning collapses, and above which it recovers most of the performance of full supervision. The two dominant families of PU methods, risk estimators and pseudo-labeling, hit this threshold at different points and for different reasons. Effectiveness also varies across vulnerability types: syntactically distinctive bugs should be easier to detect with limited labels than semantically subtle ones.
+        </div>
+
+        <p>This project uses vulnerability detection as a laboratory for studying PU learning behavior. Rather than proposing a new method, I investigate when PU learning works on code, how many labeled examples it actually needs, and what makes it break.</p>
+    </section>
+
+    <!-- ============================================ -->
+    <!-- BACKGROUND -->
+    <!-- ============================================ -->
+    <section id="background">
+        <h2>Background</h2>
+
+        <h3>The Labeling Problem</h3>
+
+        <p>Consider a security team responsible for a large C/C++ codebase. They run static analysis tools that flag thousands of potential issues. Each one requires manual review: an expert reads the surrounding code, traces data flows, and determines whether the pattern constitutes a real, exploitable vulnerability. This process takes 15&ndash;60 minutes per finding. The team labels the clear cases, confirmed vulnerabilities and obvious false positives, but the ambiguous middle ground (the majority) remains unreviewed.</p>
+
+        <p>The result is a dataset with two kinds of labels:</p>
+
+        <!-- PU Diagram -->
+        <figure>
+            <svg viewBox="0 0 780 310" xmlns="http://www.w3.org/2000/svg" style="max-width: 760px; font-family: -apple-system, BlinkMacSystemFont, sans-serif;">
+                <!-- P set -->
+                <rect x="30" y="40" width="200" height="210" rx="12" fill="rgba(63,185,80,0.12)" stroke="#3fb950" stroke-width="2"/>
+                <text x="130" y="28" text-anchor="middle" fill="#3fb950" font-size="17" font-weight="600">LABELED POSITIVES (P)</text>
+                <!-- P dots -->
+                <circle cx="70" cy="90" r="8" fill="#3fb950" opacity="0.9"/><circle cx="120" cy="80" r="8" fill="#3fb950" opacity="0.9"/>
+                <circle cx="170" cy="95" r="8" fill="#3fb950" opacity="0.9"/><circle cx="85" cy="130" r="8" fill="#3fb950" opacity="0.9"/>
+                <circle cx="140" cy="140" r="8" fill="#3fb950" opacity="0.9"/><circle cx="185" cy="125" r="8" fill="#3fb950" opacity="0.9"/>
+                <circle cx="75" cy="175" r="8" fill="#3fb950" opacity="0.9"/><circle cx="130" cy="185" r="8" fill="#3fb950" opacity="0.9"/>
+                <circle cx="170" cy="170" r="8" fill="#3fb950" opacity="0.9"/><circle cx="105" cy="215" r="8" fill="#3fb950" opacity="0.9"/>
+                <text x="130" y="270" text-anchor="middle" fill="#8b949e" font-size="14">Confirmed CVEs</text>
+                <text x="130" y="290" text-anchor="middle" fill="#8b949e" font-size="14">~20% of vulnerabilities</text>
+
+                <!-- Plus sign -->
+                <text x="290" y="150" text-anchor="middle" fill="#8b949e" font-size="32">+</text>
+
+                <!-- U set -->
+                <rect x="350" y="40" width="400" height="210" rx="12" fill="rgba(88,166,255,0.08)" stroke="#30363d" stroke-width="2"/>
+                <text x="550" y="28" text-anchor="middle" fill="#58a6ff" font-size="17" font-weight="600">UNLABELED (U)</text>
+                <!-- U dots -->
+                <circle cx="390" cy="80" r="7" fill="#484f58"/><circle cx="420" cy="90" r="7" fill="#484f58"/>
+                <circle cx="455" cy="75" r="7" fill="#484f58"/><circle cx="490" cy="85" r="7" fill="#f85149" opacity="0.8"/>
+                <circle cx="525" cy="80" r="7" fill="#484f58"/><circle cx="560" cy="90" r="7" fill="#484f58"/>
+                <circle cx="595" cy="75" r="7" fill="#484f58"/><circle cx="630" cy="85" r="7" fill="#484f58"/>
+                <circle cx="665" cy="80" r="7" fill="#484f58"/><circle cx="700" cy="88" r="7" fill="#484f58"/>
+                <circle cx="400" cy="120" r="7" fill="#484f58"/><circle cx="435" cy="115" r="7" fill="#484f58"/>
+                <circle cx="470" cy="125" r="7" fill="#f85149" opacity="0.8"/><circle cx="505" cy="118" r="7" fill="#484f58"/>
+                <circle cx="540" cy="122" r="7" fill="#484f58"/><circle cx="575" cy="115" r="7" fill="#484f58"/>
+                <circle cx="610" cy="120" r="7" fill="#484f58"/><circle cx="645" cy="118" r="7" fill="#484f58"/>
+                <circle cx="680" cy="125" r="7" fill="#484f58"/><circle cx="710" cy="118" r="7" fill="#484f58"/>
+                <circle cx="385" cy="155" r="7" fill="#484f58"/><circle cx="420" cy="160" r="7" fill="#484f58"/>
+                <circle cx="455" cy="150" r="7" fill="#484f58"/><circle cx="490" cy="158" r="7" fill="#484f58"/>
+                <circle cx="525" cy="155" r="7" fill="#484f58"/><circle cx="560" cy="162" r="7" fill="#f85149" opacity="0.8"/>
+                <circle cx="595" cy="155" r="7" fill="#484f58"/><circle cx="630" cy="160" r="7" fill="#484f58"/>
+                <circle cx="665" cy="152" r="7" fill="#484f58"/><circle cx="700" cy="158" r="7" fill="#484f58"/>
+                <circle cx="395" cy="195" r="7" fill="#484f58"/><circle cx="430" cy="190" r="7" fill="#484f58"/>
+                <circle cx="465" cy="198" r="7" fill="#484f58"/><circle cx="500" cy="192" r="7" fill="#484f58"/>
+                <circle cx="535" cy="195" r="7" fill="#484f58"/><circle cx="570" cy="200" r="7" fill="#484f58"/>
+                <circle cx="605" cy="192" r="7" fill="#484f58"/><circle cx="640" cy="198" r="7" fill="#f85149" opacity="0.8"/>
+                <circle cx="675" cy="195" r="7" fill="#484f58"/><circle cx="710" cy="192" r="7" fill="#484f58"/>
+                <!-- Legend -->
+                <circle cx="400" cy="270" r="7" fill="#484f58"/><text x="414" y="275" fill="#8b949e" font-size="14">Truly benign</text>
+                <circle cx="540" cy="270" r="7" fill="#f85149" opacity="0.8"/><text x="554" y="275" fill="#8b949e" font-size="14">Hidden vulnerable</text>
+            </svg>
+            <figcaption>Figure 4: The PU learning setup for vulnerability detection. Labeled positives (P) are confirmed CVEs. The unlabeled set (U) contains both truly benign code and undiscovered vulnerabilities, and there is no way to tell which is which.</figcaption>
+        </figure>
+
+        <p>Labeled positives (P) are functions with confirmed vulnerabilities, backed by CVE reports and security patches. These labels are reliable. Unlabeled data (U) is everything else, a collection of functions that might be safe or might contain undiscovered flaws. There are no confirmed negatives. No function has been certified as "definitely not vulnerable."</p>
+
+        <h3>PU learning: two families</h3>
+
+        <p>PU learning addresses exactly this setting. Train a binary classifier given only P and U, without assuming U is purely negative. Two distinct families of methods have emerged <a href="#ref_12">[12]</a>, <a href="#ref_5">[5]</a>:</p>
+
+        <div class="callout key-insight">
+            <div class="callout-label">Key Distinction</div>
+            Risk estimator methods modify the classification loss to mathematically account for hidden positives in U. Pseudo-labeling methods iteratively identify likely negatives in U, then train a standard classifier on the expanded label set. These two families make different assumptions and fail in different ways.
+        </div>
+
+        <p>Risk estimator methods. The foundational unbiased PU risk estimator <a href="#ref_1">[1]</a> rewrites the binary classification risk using only the P and U distributions, plus an estimate of the class prior (the true fraction of positives). This is elegant but fragile: the empirical risk can go negative, destabilizing training. Non-negative PU (nnPU) <a href="#ref_2">[2]</a> clips the negative risk term. GradPU <a href="#ref_3">[3]</a> adds a gradient penalty for Lipschitz continuity. These methods all require knowing or estimating the class prior, a quantity that is rarely available in practice. I use nnPU as the representative of this family. It is the standard baseline that all later methods compare against, and simple enough to isolate the approach's behavior from implementation complexity.</p>
+
+        <p>Pseudo-labeling methods. Self-training <a href="#ref_11">[11]</a> takes a simpler approach. Train an initial classifier treating U as negative, use it to score U and select high-confidence negatives, retrain on P plus selected negatives, and repeat. PILOT <a href="#ref_4">[4]</a> extends this with distance-aware label selection for vulnerability detection. These methods are prior-free. They don't need an estimate of the class prior, but they depend on the quality of the initial representations.</p>
+
+        <p>A NeurIPS 2025 empirical study <a href="#ref_5">[5]</a> compared these two families head-to-head on standard benchmarks and proposed a unified framework. However, their evaluation used only general-purpose datasets, not code representations or domain-specific tasks with extreme class imbalance.</p>
+
+        <h3>Vulnerability Detection with Code Models</h3>
+
+        <p>Modern vulnerability detection relies on pretrained code language models. Devign <a href="#ref_8">[8]</a> uses graph neural networks over code property graphs. LineVul <a href="#ref_9">[9]</a> showed strong results by fine-tuning CodeBERT <a href="#ref_7">[7]</a> for vulnerability classification. Chakraborty et al. <a href="#ref_10">[10]</a> highlighted that label noise is a serious problem in vulnerability datasets, with "benign" labels being particularly unreliable, which is exactly the motivation for PU learning. PrimeVul <a href="#ref_6">[6]</a> addresses these label quality issues and provides cleaner benchmarks with chronological splits and deployment-oriented metrics.</p>
+
+        <h3>The Gap</h3>
+
+        <p>PILOT <a href="#ref_4">[4]</a> showed PU learning is viable for vulnerability detection, but focused on proposing a new method rather than investigating when and why PU learning works. The NeurIPS 2025 study <a href="#ref_5">[5]</a> compared PU approaches but only on general benchmarks, not code. No prior work evaluates: (a) how PU methods perform as a function of labeling budget on code representations, (b) how sensitive risk estimators are to class prior estimation at extreme imbalance (~3% positive), or (c) how performance varies across vulnerability categories with different syntactic signatures.</p>
+
+        <div class="stats-row">
+            <div class="stat-badge">
+                <div class="number">176K</div>
+                <div class="label">Training Functions</div>
+            </div>
+            <div class="stat-badge">
+                <div class="number">2.8%</div>
+                <div class="label">Class Prior</div>
+            </div>
+            <div class="stat-badge">
+                <div class="number">100+</div>
+                <div class="label">CWE Types</div>
+            </div>
+            <div class="stat-badge">
+                <div class="number">768-d</div>
+                <div class="label">Embedding Dim</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================ -->
+    <!-- APPROACH -->
+    <!-- ============================================ -->
+    <section id="approach">
+        <h2>Approach</h2>
+
+        <h3>Why Not End-to-End Fine-Tuning?</h3>
+
+        <p>The natural approach would be to fine-tune CodeBERT end-to-end for each experimental configuration: each PU method, each labeling fraction, each class prior value, each random seed. With 4 methods, 7 labeling fractions, 5 prior values, and 3 seeds, that is over 100 training runs. Each fine-tuning run on 176K functions takes 5&ndash;10 hours on a single GPU. I estimated the total compute cost and:</p>
+
+        <figure>
+            <img src="./images/gpu_costs.gif" alt="K-2SO from Rogue One saying: It's high. It's very high." style="max-width: 480px; border-radius: 8px; border: 1px solid var(--border);"/>
+        </figure>
+
+        <p>Instead, I use a feature extraction strategy that decouples the representation from the PU investigation. The pipeline has two stages. First, every function is passed through a frozen CodeBERT model <a href="#ref_7">[7]</a> exactly once, producing a 768-dimensional [CLS] embedding that serves as the function's fixed representation. Second, all PU experiments operate on these embeddings with lightweight MLP classifiers that train in seconds on CPU. This cuts a 500+ GPU-hour experiment plan down to about an hour of CPU time, which is what lets me produce proper error bars and sweep across dozens of configurations.</p>
+
+        <h3>The pipeline</h3>
+
+        <!-- Pipeline Diagram -->
+        <figure>
+            <svg viewBox="0 0 820 760" xmlns="http://www.w3.org/2000/svg" style="max-width: 800px;">
+                <defs>
+                    <marker id="arr" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#58a6ff"/></marker>
+                    <marker id="arr-m" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#484f58"/></marker>
+                </defs>
+                <style>
+                    .st { font: 600 14px -apple-system, BlinkMacSystemFont, sans-serif; letter-spacing: 0.1em; }
+                    .tt { font: 600 17px -apple-system, BlinkMacSystemFont, sans-serif; }
+                    .bd { font: 400 15px -apple-system, BlinkMacSystemFont, sans-serif; }
+                    .sm { font: 400 14px -apple-system, BlinkMacSystemFont, sans-serif; }
+                    .mn { font: 400 13px 'SF Mono', Menlo, Consolas, monospace; }
+                    .mt { font: 600 16px -apple-system, BlinkMacSystemFont, sans-serif; }
+                    .md { font: 400 15px -apple-system, BlinkMacSystemFont, sans-serif; }
+                </style>
+
+                <!-- ===== STAGE 1 ===== -->
+                <rect x="12" y="6" width="796" height="132" rx="12" fill="none" stroke="#1c3a5e" stroke-width="1"/>
+                <text x="32" y="28" class="st" fill="#58a6ff">STAGE 1</text>
+                <text x="120" y="28" class="sm" fill="#8b949e">One-time, GPU, ~23 min</text>
+
+                <rect x="28" y="44" width="210" height="82" rx="8" fill="#161b22" stroke="#30363d" stroke-width="1"/>
+                <text x="133" y="70" text-anchor="middle" class="tt" fill="#e6edf3">C/C++ Functions</text>
+                <text x="133" y="92" text-anchor="middle" class="bd" fill="#8b949e">176K source strings</text>
+                <text x="133" y="112" text-anchor="middle" class="mn" fill="#8b949e">primevul_train.jsonl</text>
+
+                <line x1="238" y1="85" x2="296" y2="85" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arr)"/>
+
+                <rect x="300" y="44" width="220" height="82" rx="8" fill="rgba(88,166,255,0.07)" stroke="#58a6ff" stroke-width="1.5"/>
+                <text x="410" y="70" text-anchor="middle" class="tt" fill="#58a6ff">Frozen CodeBERT</text>
+                <text x="410" y="92" text-anchor="middle" class="bd" fill="#8b949e">125M params, inference only</text>
+                <text x="410" y="112" text-anchor="middle" class="bd" fill="#8b949e">[CLS] token extraction</text>
+
+                <line x1="520" y1="85" x2="578" y2="85" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arr)"/>
+
+                <rect x="582" y="44" width="210" height="82" rx="8" fill="#161b22" stroke="#30363d" stroke-width="1"/>
+                <text x="687" y="70" text-anchor="middle" class="tt" fill="#e6edf3">Embeddings</text>
+                <text x="687" y="92" text-anchor="middle" class="bd" fill="#8b949e">(176K, 768) float32</text>
+                <text x="687" y="112" text-anchor="middle" class="mn" fill="#8b949e">train.npz</text>
+
+                <!-- ===== STAGE 2 ===== -->
+                <rect x="12" y="154" width="796" height="380" rx="12" fill="none" stroke="#2d2345" stroke-width="1"/>
+                <text x="32" y="176" class="st" fill="#bc8cff">STAGE 2</text>
+                <text x="120" y="176" class="sm" fill="#8b949e">Repeated, CPU only, ~30 sec per run</text>
+
+                <!-- Connector from embeddings down -->
+                <path d="M 687 126 L 687 144 L 150 144 L 150 192" stroke="#484f58" stroke-width="1" stroke-dasharray="4,3" fill="none"/>
+
+                <!-- PU Split -->
+                <rect x="28" y="192" width="238" height="130" rx="8" fill="#161b22" stroke="#30363d" stroke-width="1"/>
+                <text x="147" y="220" text-anchor="middle" class="tt" fill="#e6edf3">PU Split</text>
+                <rect x="48" y="232" width="198" height="26" rx="5" fill="rgba(63,185,80,0.08)"/>
+                <text x="147" y="251" text-anchor="middle" class="bd" fill="#3fb950">P: 972 labeled positives</text>
+                <rect x="48" y="264" width="198" height="26" rx="5" fill="rgba(88,166,255,0.05)"/>
+                <text x="147" y="283" text-anchor="middle" class="bd" fill="#8b949e">U: 174,825 unlabeled</text>
+                <text x="147" y="312" text-anchor="middle" class="sm" fill="#f85149">(3,890 hidden vulnerable in U)</text>
+
+                <!-- Arrow split to methods -->
+                <line x1="266" y1="257" x2="318" y2="257" stroke="#484f58" stroke-width="1.5" marker-end="url(#arr-m)"/>
+
+                <!-- Supervised -->
+                <rect x="322" y="192" width="270" height="62" rx="8" fill="rgba(63,185,80,0.05)" stroke="#3fb950" stroke-width="1"/>
+                <rect x="334" y="204" width="6" height="38" rx="3" fill="#3fb950"/>
+                <text x="354" y="221" class="mt" fill="#e6edf3">Supervised MLP</text>
+                <text x="354" y="242" class="md" fill="#8b949e">Full labels, BCE + pos_weight</text>
+
+                <!-- Naive PU -->
+                <rect x="322" y="264" width="270" height="62" rx="8" fill="rgba(248,81,73,0.05)" stroke="#f85149" stroke-width="1"/>
+                <rect x="334" y="276" width="6" height="38" rx="3" fill="#f85149"/>
+                <text x="354" y="293" class="mt" fill="#e6edf3">Naive PU</text>
+                <text x="354" y="314" class="md" fill="#8b949e">All of U treated as negative</text>
+
+                <!-- nnPU -->
+                <rect x="322" y="336" width="270" height="62" rx="8" fill="rgba(88,166,255,0.05)" stroke="#58a6ff" stroke-width="1"/>
+                <rect x="334" y="348" width="6" height="38" rx="3" fill="#58a6ff"/>
+                <text x="354" y="365" class="mt" fill="#e6edf3">nnPU</text>
+                <text x="354" y="386" class="md" fill="#8b949e">PU risk, non-neg correction</text>
+
+                <!-- Self-Training -->
+                <rect x="322" y="408" width="270" height="62" rx="8" fill="rgba(188,140,255,0.05)" stroke="#bc8cff" stroke-width="1"/>
+                <rect x="334" y="420" width="6" height="38" rx="3" fill="#bc8cff"/>
+                <text x="354" y="437" class="mt" fill="#e6edf3">Self-Training</text>
+                <text x="354" y="458" class="md" fill="#8b949e">Iterative pseudo-labeling</text>
+
+                <!-- Dashes to checkpoints -->
+                <line x1="592" y1="223" x2="640" y2="223" stroke="#30363d" stroke-width="1" stroke-dasharray="4,3"/>
+                <line x1="592" y1="295" x2="640" y2="295" stroke="#30363d" stroke-width="1" stroke-dasharray="4,3"/>
+                <line x1="592" y1="367" x2="640" y2="367" stroke="#30363d" stroke-width="1" stroke-dasharray="4,3"/>
+                <line x1="592" y1="439" x2="640" y2="439" stroke="#30363d" stroke-width="1" stroke-dasharray="4,3"/>
+
+                <!-- Checkpoints -->
+                <rect x="640" y="192" width="156" height="280" rx="8" fill="#161b22" stroke="#30363d" stroke-width="1"/>
+                <text x="718" y="218" text-anchor="middle" class="tt" fill="#e6edf3">Checkpoints</text>
+                <text x="718" y="244" text-anchor="middle" class="mn" fill="#3fb950">supervised.pt</text>
+                <text x="718" y="264" text-anchor="middle" class="mn" fill="#f85149">naive_pu.pt</text>
+                <text x="718" y="284" text-anchor="middle" class="mn" fill="#58a6ff">nnpu.pt</text>
+                <text x="718" y="304" text-anchor="middle" class="mn" fill="#bc8cff">self_training.pt</text>
+                <line x1="660" y1="320" x2="776" y2="320" stroke="#30363d" stroke-width="0.5"/>
+                <text x="718" y="342" text-anchor="middle" class="sm" fill="#8b949e">x 7 labeling fractions</text>
+                <text x="718" y="362" text-anchor="middle" class="sm" fill="#8b949e">x 5 class priors (nnPU)</text>
+                <text x="718" y="382" text-anchor="middle" class="sm" fill="#8b949e">x 3 random seeds</text>
+                <line x1="660" y1="396" x2="776" y2="396" stroke="#30363d" stroke-width="0.5"/>
+                <rect x="672" y="406" width="92" height="26" rx="6" fill="rgba(210,153,34,0.12)" stroke="#d29922" stroke-width="0.5"/>
+                <text x="718" y="424" text-anchor="middle" fill="#d29922" style="font:600 14px -apple-system,sans-serif">~30s / run</text>
+                <text x="718" y="456" text-anchor="middle" class="sm" fill="#8b949e">197K params each</text>
+
+                <!-- ===== STAGE 3 ===== -->
+                <rect x="12" y="550" width="796" height="140" rx="12" fill="none" stroke="#3d3020" stroke-width="1"/>
+                <text x="32" y="572" class="st" fill="#d29922">STAGE 3</text>
+                <text x="120" y="572" class="sm" fill="#8b949e">Test set, full labels retained</text>
+
+                <!-- Connector -->
+                <path d="M 718 472 L 718 540 L 560 594" stroke="#484f58" stroke-width="1" stroke-dasharray="4,3" fill="none" marker-end="url(#arr-m)"/>
+
+                <!-- Eval box -->
+                <rect x="120" y="586" width="520" height="88" rx="8" fill="#161b22" stroke="#30363d" stroke-width="1"/>
+                <rect x="146" y="600" width="100" height="28" rx="6" fill="rgba(63,185,80,0.08)" stroke="#3fb950" stroke-width="0.5"/>
+                <text x="196" y="620" text-anchor="middle" class="bd" fill="#3fb950">F1 score</text>
+                <rect x="260" y="600" width="76" height="28" rx="6" fill="rgba(88,166,255,0.08)" stroke="#58a6ff" stroke-width="0.5"/>
+                <text x="298" y="620" text-anchor="middle" class="bd" fill="#58a6ff">VDS</text>
+                <rect x="350" y="600" width="120" height="28" rx="6" fill="rgba(188,140,255,0.08)" stroke="#bc8cff" stroke-width="0.5"/>
+                <text x="410" y="620" text-anchor="middle" class="bd" fill="#bc8cff">Pairwise acc</text>
+                <rect x="484" y="600" width="132" height="28" rx="6" fill="rgba(210,153,34,0.08)" stroke="#d29922" stroke-width="0.5"/>
+                <text x="550" y="620" text-anchor="middle" class="bd" fill="#d29922">Per-CWE recall</text>
+                <text x="380" y="656" text-anchor="middle" class="sm" fill="#8b949e">24,788 test functions (549 vulnerable), never seen during training</text>
+
+                <text x="410" y="744" text-anchor="middle" class="sm" fill="#30363d">evaluate.py</text>
+            </svg>
+            <figcaption>Figure 5: The experimental pipeline. CodeBERT converts source code into fixed embeddings once (Stage 1). All PU experiments operate on these embeddings with lightweight MLPs (Stage 2, ~30 seconds per configuration). Every checkpoint is scored on the held-out test set (Stage 3).</figcaption>
+        </figure>
+
+        <p>The key property of this design is that Stages 2 and 3 are cheap. Changing the PU method, the labeling fraction, the class prior, or the random seed means retraining a 197K-parameter MLP on precomputed vectors. No GPU required. This is what makes the sweeps across dozens of configurations practical for a single person on a laptop.</p>
+
+        <p>I compare four methods spanning two PU families plus bounds:</p>
+
+        <div class="method-grid">
+            <div class="method-card">
+                <span class="tag upper-bound">Upper Bound</span>
+                <h4>Supervised MLP</h4>
+                <p>Trained on full labels. The ceiling for what fixed embeddings can achieve.</p>
+            </div>
+            <div class="method-card">
+                <span class="tag lower-bound">Lower Bound</span>
+                <h4>Naive PU</h4>
+                <p>Treats all unlabeled data as negative. The simplest possible baseline.</p>
+            </div>
+            <div class="method-card">
+                <span class="tag risk-estimator">Risk Estimator</span>
+                <h4>nnPU</h4>
+                <p>Unbiased PU risk with non-negative correction <a href="#ref_2">[2]</a>. Requires a class prior estimate.</p>
+            </div>
+            <div class="method-card">
+                <span class="tag pseudo-label">Pseudo-Labeling</span>
+                <h4>Self-Training</h4>
+                <p>Iteratively identifies likely negatives in U and retrains. Prior-free.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================ -->
+    <!-- EXPERIMENTS (placeholder) -->
+    <!-- ============================================ -->
+    <section id="experiments">
+        <h2>Experimental setup</h2>
+
+        <h3>Dataset and PU simulation</h3>
+
+        <p>I use PrimeVul v0.1 <a href="#ref_6">[6]</a>, which contains 175,797 training functions (4,862 vulnerable, 170,935 benign), with 23,948 for validation and 24,788 for testing. The splits are chronological: training data comes from older commits, test data from newer ones. PrimeVul also provides 435 matched pairs of vulnerable functions and their patched versions for pairwise evaluation.</p>
+
+        <p>To simulate the PU setting, I sample a fraction of the vulnerable training functions as the labeled positive set P. The rest, the remaining vulnerable functions plus all benign functions, becomes U. I strip their labels. At 20% labeling (the default), P contains 972 functions and U contains 174,825 functions, of which 3,890 are hidden vulnerabilities that the model does not know about. The validation and test sets keep their full labels throughout.</p>
+
+        <h3>Representation</h3>
+
+        <p>I tokenize each function's source code and pass it through a frozen CodeBERT model <a href="#ref_7">[7]</a> (microsoft/codebert-base, 125M parameters). I extract the [CLS] token embedding from the final layer, producing a 768-dimensional vector per function. This is done once for all splits.</p>
+
+        <h3>Classifier</h3>
+
+        <p>All methods use the same architecture: a 2-layer MLP with a 256-unit hidden layer, ReLU activation, and 30% dropout. The model takes a 768-d embedding and outputs a single logit (sigmoid applied at inference). That is 197,377 parameters. I train with Adam (lr=1e-3) and early stopping on validation F1 score with patience of 5-7 epochs depending on the method.</p>
+
+        <h3>Methods</h3>
+
+        <table>
+            <tr><th>Method</th><th>Family</th><th>Training signal</th><th>Requires class prior?</th></tr>
+            <tr><td>Supervised MLP</td><td>Upper bound</td><td>Full labels (all 175K)</td><td>No</td></tr>
+            <tr><td>Naive PU</td><td>Lower bound</td><td>P=1, all U=0</td><td>No</td></tr>
+            <tr><td>nnPU <a href="#ref_2">[2]</a></td><td>Risk estimator</td><td>Separate P and U batches, unbiased PU risk with non-negative correction</td><td>Yes (default: 0.0277)</td></tr>
+            <tr><td>Self-training <a href="#ref_11">[11]</a></td><td>Pseudo-labeling</td><td>Iterative: train on P vs U, score U, select confident negatives, retrain</td><td>No</td></tr>
+        </table>
+
+        <p>The supervised and naive PU baselines use BCE loss with a positive class weight (n_neg / n_pos) to handle the class imbalance. For nnPU, the loss is the PU risk estimator from Kiryo et al. <a href="#ref_2">[2]</a>, which approximates the binary classification risk from P and U alone, given a class prior estimate. When the negative risk term goes below zero (a known instability), nnPU clips it. For self-training, I run 5 iterations. Each iteration after the first uses the current model to score U and selects the 10% of U with the lowest predicted vulnerability probability as "reliable negatives," then retrains a fresh MLP on P plus these selected negatives.</p>
+
+        <h3>Experiments</h3>
+
+        <p>I run three experiments:</p>
+
+        <table>
+            <tr><th>Experiment</th><th>What varies</th><th>What is fixed</th><th>Question</th></tr>
+            <tr><td>1. Baseline comparison</td><td>Method (all 4)</td><td>20% labeled (P=972), prior=0.0277, 3 seeds</td><td>Which method works best? How close to supervised?</td></tr>
+            <tr><td>2. Labeling budget</td><td>Labeled fraction: 2%-80% (P=97 to P=3,890)</td><td>nnPU + self-training, 3 seeds</td><td>How many labeled positives does PU learning need? Is there a cliff?</td></tr>
+            <tr><td>3. Class prior sensitivity</td><td>Assumed prior (0.5x-2x true)</td><td>nnPU, 20% labeled, 3 seeds</td><td>How wrong can the prior estimate be?</td></tr>
+        </table>
+
+        <p>Experiment 2 is the central one. The percentage (2%, 5%, 10%, etc.) is specific to PrimeVul's 4,862 vulnerable functions. The more generalizable quantity is the absolute P count. At 2% labeling, P contains 97 functions. At 5%, 243. At 10%, 486. The labeling curve will show whether there is a smooth degradation or a cliff below which PU learning stops working, and whether nnPU and self-training hit that threshold at different points. I plot both the percentage and the absolute count on the x-axis so the result translates to other datasets. A security team deciding how many findings to label cares about the absolute number, not the fraction of a denominator they do not know.</p>
+
+        <p>I also stratify test set results by CWE type (for categories with at least 10 test samples) to see whether syntactically distinctive vulnerability types like buffer overflows (CWE-119) hold up better under PU learning than semantically subtle ones like race conditions (CWE-362). All experiments use 3 random seeds (42, 123, 456) and I report mean and standard deviation.</p>
+
+        <h3>Evaluation metrics</h3>
+
+        <p>Following PrimeVul <a href="#ref_6">[6]</a>, I report three metrics:</p>
+
+        <table>
+            <tr><th>Metric</th><th>What it measures</th><th>Direction</th></tr>
+            <tr><td>F1 score</td><td>Harmonic mean of precision and recall at threshold 0.5</td><td>Higher is better</td></tr>
+            <tr><td>VDS</td><td>Miss rate (FNR) at a false positive rate of at most 0.5%. Simulates a deployment constraint where a security team can tolerate at most 1-in-200 false alarms.</td><td>Lower is better</td></tr>
+            <tr><td>Pairwise accuracy</td><td>Given a vulnerable function and its patched version, how often does the model assign higher probability to the vulnerable one?</td><td>Higher is better</td></tr>
+        </table>
+    </section>
+
+    <!-- ============================================ -->
+    <!-- RESULTS (placeholder) -->
+    <!-- ============================================ -->
+    <section id="results">
+        <h2>Results</h2>
+        <div class="placeholder">Results and figures will be added after experiments are complete.</div>
+    </section>
+
+    <!-- ============================================ -->
+    <!-- DISCUSSION (placeholder) -->
+    <!-- ============================================ -->
+    <section id="discussion">
+        <h2>Discussion</h2>
+        <div class="placeholder">Discussion and analysis will be added after results are interpreted.</div>
+    </section>
+
+    <!-- ============================================ -->
+    <!-- REFERENCES -->
+    <!-- ============================================ -->
+    <section id="references" class="references">
+        <h2>References</h2>
+        <ol>
+            <li id="ref_1">du Plessis, M. C., Niu, G., &amp; Sugiyama, M. (2015). Convex Formulation for Learning from Positive and Unlabeled Data. <em>ICML</em>, 1386&ndash;1394.</li>
+            <li id="ref_2">Kiryo, R., Niu, G., du Plessis, M. C., &amp; Sugiyama, M. (2017). Positive-Unlabeled Learning with Non-Negative Risk Estimator. <em>NeurIPS</em>, 30.</li>
+            <li id="ref_3">Dai, S., Li, X., Zhou, Y., Ye, X., &amp; Liu, T. (2023). GradPU: Positive-Unlabeled Learning via Gradient Penalty and Positive Upweighting. <em>AAAI</em>, 37(6), 7296&ndash;7303.</li>
+            <li id="ref_4">Li, Y., Wang, S., &amp; Nguyen, T. N. (2023). When Less is Enough: Positive and Unlabeled Learning Model for Vulnerability Detection. <em>ASE</em>, 345&ndash;357.</li>
+            <li id="ref_5">A Closer Look to Positive-Unlabeled Learning from Fine-grained Perspectives: An Empirical Study. (2025). <em>NeurIPS</em>, 38. <a href="https://openreview.net/forum?id=gioV0q55AJ">OpenReview</a>.</li>
+            <li id="ref_6">Ding, Y., et al. (2025). Vulnerability Detection with Code Language Models: How Far Are We? <em>ICSE</em>.</li>
+            <li id="ref_7">Feng, Z., et al. (2020). CodeBERT: A Pre-Trained Model for Programming and Natural Languages. <em>Findings of EMNLP</em>, 1536&ndash;1547.</li>
+            <li id="ref_8">Zhou, Y., et al. (2019). Devign: Effective Vulnerability Identification by Learning Comprehensive Program Semantics via Graph Neural Networks. <em>NeurIPS</em>, 32.</li>
+            <li id="ref_9">Fu, M. &amp; Tantithamthavorn, C. (2022). LineVul: A Transformer-based Line-Level Vulnerability Prediction. <em>MSR</em>, 608&ndash;620.</li>
+            <li id="ref_10">Chakraborty, S., et al. (2022). Deep Learning based Vulnerability Detection: Are We There Yet? <em>IEEE TSE</em>, 48(9), 3280&ndash;3296.</li>
+            <li id="ref_11">Liu, B., et al. (2003). Building Text Classifiers Using Positive and Unlabeled Examples. <em>ICDM</em>, 179&ndash;186.</li>
+            <li id="ref_12">Bekker, J. &amp; Davis, J. (2020). Learning from Positive and Unlabeled Data: A Survey. <em>Machine Learning</em>, 109, 719&ndash;760.</li>
+        </ol>
+    </section>
+
+</div>
+
+</body>
+</html>

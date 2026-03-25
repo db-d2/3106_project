@@ -1,0 +1,44 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+
+# Environment
+.env
+.env.*
+
+# Data (too large for git)
+data/raw/
+data/processed/
+
+# Model checkpoints
+checkpoints/
+*.pt
+*.bin
+*.onnx
+
+# Experiment logs
+experiments/logs/
+wandb/
+
+# Claude Code local
+.claude/settings.local.json
+CLAUDE.local.md
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Quality reports (generated, not tracked)
+quality_reports/

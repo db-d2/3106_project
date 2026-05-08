@@ -94,8 +94,6 @@ Training scripts read embeddings from the path in the `EMBEDDING_DIR` environmen
 EMBEDDING_DIR=data/processed/embeddings_vulberta python src/train_nnpu.py --labeled-frac 0.20 --split-seed 42 --seed 42 --prior 0.0277
 ```
 
-The blog reports CodeBERT as the primary representation and uses VulBERTa as a cross-encoder replication check.
-
 ### 3. Generate PU splits
 
 ```bash

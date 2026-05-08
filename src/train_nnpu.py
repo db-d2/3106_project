@@ -14,7 +14,7 @@ from pathlib import Path
 
 import numpy as np
 import torch
-from sklearn.metrics import f1_score
+from sklearn.metrics import f1_score, roc_auc_score
 from torch.utils.data import DataLoader, TensorDataset
 
 from model import VulnMLP
@@ -23,7 +23,7 @@ from losses import nnpu_loss
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
 
-EMBEDDING_DIR = Path("data/processed/embeddings")
+import os; EMBEDDING_DIR = Path(os.environ.get("EMBEDDING_DIR", "data/processed/embeddings"))
 SPLIT_DIR = Path("data/processed")
 CHECKPOINT_DIR = Path("checkpoints")
 
@@ -112,7 +112,7 @@ def main() -> None:
     model = VulnMLP(input_dim=X_p.shape[1], hidden_dim=args.hidden_dim, dropout=args.dropout).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
 
-    best_val_f1 = -1.0
+    best_val_auroc = -1.0
     patience_counter = 0
     CHECKPOINT_DIR.mkdir(parents=True, exist_ok=True)
     ckpt_name = "nnpu_frac{:.2f}_prior{:.4f}_seed{}.pt".format(
@@ -150,17 +150,19 @@ def main() -> None:
 
         avg_loss = epoch_loss / max(n_batches, 1)
 
-        # Validate with F1 on full-label dev set
+        # Validate with AUROC on full-label dev set.
+        # nnPU outputs uncalibrated probabilities (tuned threshold was 0.09 vs 0.5+
+        # for other methods), so threshold-dependent F1 is unreliable for model
+        # selection. AUROC is threshold-free and appropriate here.
         model.eval()
         with torch.no_grad():
             val_probs = model.predict_proba(X_valid).cpu().numpy()
-        val_preds = (val_probs >= 0.5).astype(int)
-        val_f1 = f1_score(y_valid, val_preds)
+        val_auroc = roc_auc_score(y_valid, val_probs)
 
-        logger.info("Epoch %d/%d -- loss: %.4f, val_f1: %.4f", epoch, args.epochs, avg_loss, val_f1)
+        logger.info("Epoch %d/%d -- loss: %.4f, val_auroc: %.4f", epoch, args.epochs, avg_loss, val_auroc)
 
-        if val_f1 > best_val_f1:
-            best_val_f1 = val_f1
+        if val_auroc > best_val_auroc:
+            best_val_auroc = val_auroc
             patience_counter = 0
             torch.save(model.state_dict(), ckpt)
         else:
@@ -169,7 +171,7 @@ def main() -> None:
                 logger.info("Early stopping at epoch %d", epoch)
                 break
 
-    logger.info("Best val F1: %.4f", best_val_f1)
+    logger.info("Best val AUROC: %.4f", best_val_auroc)
     logger.info("Checkpoint saved to %s", ckpt)
 
 

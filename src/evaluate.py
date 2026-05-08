@@ -25,7 +25,7 @@ from model import VulnMLP
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
 
-EMBEDDING_DIR = Path("data/processed/embeddings")
+import os; EMBEDDING_DIR = Path(os.environ.get("EMBEDDING_DIR", "data/processed/embeddings"))
 
 
 def load_embeddings(split: str) -> dict:
@@ -125,6 +125,10 @@ def main() -> None:
     parser.add_argument("--hidden-dim", type=int, default=256)
     parser.add_argument("--dropout", type=float, default=0.3)
     parser.add_argument(
+        "--output-json", type=Path, default=None,
+        help="Write all metrics including per-CWE recall to a JSON file",
+    )
+    parser.add_argument(
         "--tune-threshold", action="store_true",
         help="Tune classification threshold on val set instead of using 0.5",
     )
@@ -192,21 +196,20 @@ def main() -> None:
     # Per-CWE breakdown (vulnerable samples only)
     cwe_types = test_data["cwe_types"]
     vuln_mask = y_test == 1
+    per_cwe = {}
     if vuln_mask.sum() > 0:
         vuln_cwes = cwe_types[vuln_mask]
         vuln_preds = preds[vuln_mask]
+        vuln_probs = probs[vuln_mask]
         unique_cwes, counts = np.unique(vuln_cwes, return_counts=True)
 
-        logger.info("\nPer-CWE recall (CWEs with >= 10 test samples):")
-        cwe_results = []
-        for cwe, count in zip(unique_cwes, counts):
-            if count >= 10:
+        logger.info("\nPer-CWE recall (CWEs with >= 5 test samples):")
+        for cwe, count in sorted(zip(unique_cwes, counts), key=lambda x: -x[1]):
+            if count >= 5:
                 cwe_mask = vuln_cwes == cwe
-                recall = vuln_preds[cwe_mask].mean()
-                cwe_results.append((cwe, count, recall))
-        cwe_results.sort(key=lambda x: -x[2])
-        for cwe, count, recall in cwe_results:
-            logger.info("  %s (n=%d): recall=%.3f", cwe, count, recall)
+                recall = float(vuln_preds[cwe_mask].mean())
+                per_cwe[str(cwe)] = {"n": int(count), "recall": round(recall, 4)}
+                logger.info("  %s (n=%d): recall=%.3f", cwe, count, recall)
 
     # Summary
     results = {
@@ -216,8 +219,18 @@ def main() -> None:
         "auprc": round(float(auprc), 4),
         "vds": round(float(vds), 4),
         "pairwise_acc": round(float(pw_acc), 4) if pw_acc >= 0 else None,
+        "per_cwe": per_cwe,
     }
-    logger.info("\nResults summary: %s", results)
+    logger.info("\nResults summary (aggregate): f1=%.4f auroc=%.4f auprc=%.4f",
+                f1, auroc, auprc)
+
+    # Write structured JSON if requested
+    if args.output_json:
+        import json
+        args.output_json.parent.mkdir(parents=True, exist_ok=True)
+        with open(args.output_json, "w") as jf:
+            json.dump(results, jf, indent=2)
+        logger.info("Saved JSON to %s", args.output_json)
 
 
 if __name__ == "__main__":

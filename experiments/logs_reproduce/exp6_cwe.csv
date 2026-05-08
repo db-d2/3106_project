@@ -1,0 +1,61 @@
+method,seed,category,n_test,recall
+supervised,42,Memory safety,271,0.3395
+supervised,42,Logic / semantic,145,0.2414
+supervised,42,Concurrency,10,0.1
+naive_pu,42,Memory safety,271,0.2325
+naive_pu,42,Logic / semantic,145,0.1586
+naive_pu,42,Concurrency,10,0.1
+nnpu,42,Memory safety,271,0.3284
+nnpu,42,Logic / semantic,145,0.269
+nnpu,42,Concurrency,10,0.2
+self_training,42,Memory safety,271,0.2103
+self_training,42,Logic / semantic,145,0.1241
+self_training,42,Concurrency,10,0.1
+supervised,123,Memory safety,271,0.3506
+supervised,123,Logic / semantic,145,0.2414
+supervised,123,Concurrency,10,0.1
+naive_pu,123,Memory safety,271,0.3358
+naive_pu,123,Logic / semantic,145,0.2069
+naive_pu,123,Concurrency,10,0.2
+nnpu,123,Memory safety,271,0.2989
+nnpu,123,Logic / semantic,145,0.1931
+nnpu,123,Concurrency,10,0.1
+self_training,123,Memory safety,271,0.4022
+self_training,123,Logic / semantic,145,0.2345
+self_training,123,Concurrency,10,0.3
+supervised,456,Memory safety,271,0.4096
+supervised,456,Logic / semantic,145,0.2828
+supervised,456,Concurrency,10,0.1
+naive_pu,456,Memory safety,271,0.3764
+naive_pu,456,Logic / semantic,145,0.2069
+naive_pu,456,Concurrency,10,0.2
+nnpu,456,Memory safety,271,0.3579
+nnpu,456,Logic / semantic,145,0.2345
+nnpu,456,Concurrency,10,0.1
+self_training,456,Memory safety,271,0.2472
+self_training,456,Logic / semantic,145,0.1103
+self_training,456,Concurrency,10,0.1
+supervised,789,Memory safety,271,0.3358
+supervised,789,Logic / semantic,145,0.2207
+supervised,789,Concurrency,10,0.1
+naive_pu,789,Memory safety,271,0.4502
+naive_pu,789,Logic / semantic,145,0.3655
+naive_pu,789,Concurrency,10,0.1
+nnpu,789,Memory safety,271,0.3542
+nnpu,789,Logic / semantic,145,0.2897
+nnpu,789,Concurrency,10,0.1
+self_training,789,Memory safety,271,0.2546
+self_training,789,Logic / semantic,145,0.1517
+self_training,789,Concurrency,10,0.1
+supervised,999,Memory safety,271,0.4022
+supervised,999,Logic / semantic,145,0.2621
+supervised,999,Concurrency,10,0.1
+naive_pu,999,Memory safety,271,0.2768
+naive_pu,999,Logic / semantic,145,0.1586
+naive_pu,999,Concurrency,10,0.1
+nnpu,999,Memory safety,271,0.2657
+nnpu,999,Logic / semantic,145,0.2138
+nnpu,999,Concurrency,10,0.1
+self_training,999,Memory safety,271,0.369
+self_training,999,Logic / semantic,145,0.2621
+self_training,999,Concurrency,10,0.2

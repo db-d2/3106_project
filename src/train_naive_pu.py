@@ -16,7 +16,7 @@ from pathlib import Path
 import numpy as np
 import torch
 import torch.nn as nn
-from sklearn.metrics import f1_score
+from sklearn.metrics import f1_score, roc_auc_score
 from torch.utils.data import DataLoader, TensorDataset
 
 from model import VulnMLP
@@ -24,7 +24,7 @@ from model import VulnMLP
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
 
-EMBEDDING_DIR = Path("data/processed/embeddings")
+import os; EMBEDDING_DIR = Path(os.environ.get("EMBEDDING_DIR", "data/processed/embeddings"))
 SPLIT_DIR = Path("data/processed")
 CHECKPOINT_DIR = Path("checkpoints")
 
@@ -101,8 +101,8 @@ def train_epoch(model, loader, optimizer, criterion, device) -> float:
     return total_loss / n_batches
 
 
-def validate(model, loader, device) -> float:
-    """Validate model. Returns F1 score."""
+def validate_auroc(model, loader, device) -> float:
+    """Validate model. Returns AUROC."""
     model.eval()
     all_probs = []
     all_labels = []
@@ -115,7 +115,7 @@ def validate(model, loader, device) -> float:
     probs = np.concatenate(all_probs)
     labels = np.concatenate(all_labels)
     preds = (probs >= 0.5).astype(int)
-    return f1_score(labels, preds)
+    return roc_auc_score(labels, probs)
 
 
 def main() -> None:
@@ -164,7 +164,7 @@ def main() -> None:
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
     criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
 
-    best_val_f1 = -1.0
+    best_val_auroc = -1.0
     patience_counter = 0
     CHECKPOINT_DIR.mkdir(parents=True, exist_ok=True)
     ckpt_name = "naive_pu_frac" + "{:.2f}".format(args.labeled_frac) + "_seed" + str(args.seed) + ".pt"
@@ -172,12 +172,12 @@ def main() -> None:
 
     for epoch in range(1, args.epochs + 1):
         train_loss = train_epoch(model, train_loader, optimizer, criterion, device)
-        val_f1 = validate(model, valid_loader, device)
-        logger.info("Epoch %d/%d -- train_loss: %.4f, val_f1: %.4f",
-                     epoch, args.epochs, train_loss, val_f1)
+        val_auroc = validate_auroc(model, valid_loader, device)
+        logger.info("Epoch %d/%d -- train_loss: %.4f, val_auroc: %.4f",
+                     epoch, args.epochs, train_loss, val_auroc)
 
-        if val_f1 > best_val_f1:
-            best_val_f1 = val_f1
+        if val_auroc > best_val_auroc:
+            best_val_auroc = val_auroc
             patience_counter = 0
             torch.save(model.state_dict(), ckpt)
         else:
@@ -186,7 +186,7 @@ def main() -> None:
                 logger.info("Early stopping at epoch %d", epoch)
                 break
 
-    logger.info("Best val F1: %.4f", best_val_f1)
+    logger.info("Best val AUROC: %.4f", best_val_auroc)
     logger.info("Checkpoint saved to %s", ckpt)
 
 

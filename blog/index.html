@@ -165,6 +165,51 @@
             margin-top: 12px;
             font-style: italic;
         }
+        /* === Lightbox === */
+        .lightbox-trigger {
+            display: inline-block;
+            cursor: zoom-in;
+            line-height: 0;
+        }
+        .lightbox-trigger:hover img {
+            opacity: 0.92;
+            transition: opacity 0.15s ease;
+        }
+        .lightbox-modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.92);
+            z-index: 1000;
+            cursor: zoom-out;
+            padding: 40px;
+            box-sizing: border-box;
+            text-align: center;
+            text-decoration: none;
+        }
+        .lightbox-modal:target {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .lightbox-modal img {
+            max-width: 100%;
+            max-height: calc(100vh - 80px);
+            width: auto;
+            height: auto;
+            border-radius: 6px;
+            box-shadow: 0 8px 40px rgba(0, 0, 0, 0.5);
+        }
+        .lightbox-close {
+            position: absolute;
+            top: 16px;
+            right: 28px;
+            color: #fff;
+            font-size: 36px;
+            line-height: 1;
+            user-select: none;
+            opacity: 0.8;
+        }
 
         /* === Tables === */
         table {
@@ -223,6 +268,26 @@
             color: var(--text-muted);
             margin: 0;
         }
+
+        /* === Math block === */
+        .math-block {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 18px 22px;
+            margin: 20px 0;
+            color: var(--text);
+            overflow-x: auto;
+        }
+        .math-block .math-label {
+            font-size: 0.75em;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-muted);
+            margin-bottom: 10px;
+        }
+        .math-block svg { color: var(--text); display: block; max-width: 100%; height: auto; }
 
         /* === Stat Badges === */
         .stats-row {
@@ -295,7 +360,8 @@
         <h1>Here Be Dragons: When Does PU Learning Work for Vulnerability Detection?</h1>
         <div class="subtitle">A systematic investigation of positive-unlabeled learning on code representations</div>
         <div class="meta">
-            David Benson &middot; STAT 3106 Applied Machine Learning &middot; Spring 2026
+            David Benson &middot; STAT 3106 Applied Machine Learning &middot; Spring 2026 &middot;
+            <a href="https://github.com/db-d2/3106_project">Code on GitHub</a>
         </div>
     </div>
 
@@ -307,6 +373,8 @@
         <a href="#experiments">Experiments</a>
         <a href="#results">Results</a>
         <a href="#discussion">Discussion</a>
+        <a href="#ethics">Ethics</a>
+        <a href="#conclusion">Conclusion</a>
         <a href="#references">References</a>
     </nav>
 
@@ -322,7 +390,7 @@
 
         <div class="callout">
             <div class="callout-label">A note on security terminology</div>
-            Two acronyms come up repeatedly in vulnerability detection and they are easy to conflate. A CWE (Common Weakness Enumeration) is a category of bug. CWE-119, for example, covers buffer overflows; CWE-362 covers race conditions. Think of CWEs as the taxonomy. A CVE (Common Vulnerabilities and Exposures) is a specific, publicly disclosed instance of a bug in a particular piece of software. CVE-2014-0160 is the Heartbleed bug. It is one instance of CWE-119. In the PrimeVul dataset, every vulnerable function has an associated CVE (the specific disclosure) and one or more CWEs (the type of flaw). When I later analyze performance "by CWE type," I am grouping vulnerabilities by the nature of the bug, not by individual disclosures.
+            Two acronyms come up repeatedly and are easy to conflate. A CWE (Common Weakness Enumeration) is a category of bug: CWE-119 is buffer overflows, CWE-362 is race conditions. A CVE (Common Vulnerabilities and Exposures) is a specific disclosed instance; CVE-2014-0160 (Heartbleed) is one instance of CWE-125 (Out-of-bounds Read). In PrimeVul, every vulnerable function has an associated CVE and one or more CWEs. When I later analyze performance "by CWE type," I am grouping by the nature of the bug, not by individual disclosures.
         </div>
 
         <!-- CWE Distribution Bar Chart -->
@@ -390,10 +458,10 @@
                 <rect x="240" y="478" width="14" height="14" rx="3" fill="#d29922" opacity="0.6"/>
                 <text x="262" y="491" fill="#8b949e" font-size="14">Concurrency (requires reasoning about execution order)</text>
             </svg>
-            <figcaption>Figure 2: Distribution of the top 10 CWE types among vulnerable functions in PrimeVul training data. Memory safety bugs dominate. The color coding previews a question I return to later: do syntactically obvious vulnerability types (green) respond differently to PU learning than semantic or concurrency bugs (purple, yellow)?</figcaption>
+            <figcaption>Figure 1. Distribution of the top 10 CWE types among vulnerable functions in PrimeVul training data. Memory safety bugs dominate. The color coding previews a question I return to later. Do syntactically obvious vulnerability types (green) respond differently to PU learning than semantic or concurrency bugs (purple, yellow)?</figcaption>
         </figure>
 
-        <p>In real-world application security workflows, the process for generating labels looks like this: a security team runs static analysis tools against the codebase written by their internal engineering teams. These tools flag code patterns that match known CWE categories. The tools are intentionally aggressive and produce a lot of false positives. An application security expert then triages each finding, reads the surrounding code, traces data flows, and determines whether the flagged pattern is actually exploitable in context. This process takes 15&ndash;60 minutes per finding.</p>
+        <p>In production, labels are generated by triage. A security team runs deliberately aggressive static-analysis scanners that flag CWE-pattern matches and produce many false positives. An expert then reads each finding, traces data flows, and determines whether the pattern is exploitable. This takes 15&ndash;60 minutes per finding.</p>
 
         <!-- Triage Funnel -->
         <figure>
@@ -424,17 +492,17 @@
                 <line x1="590" y1="314" x2="525" y2="314" stroke="#8b949e" stroke-width="1"/>
                 <text x="608" y="190" fill="#8b949e" font-size="14" transform="rotate(90, 608, 190)">85% drop-off</text>
             </svg>
-            <figcaption>Figure 3: The triage funnel. Static analysis tools are deliberately noisy, and expert review is expensive. Most findings never get labeled, producing the positive-unlabeled structure that motivates this project.</figcaption>
+            <figcaption>Figure 2. The triage funnel. Static analysis tools are deliberately noisy, and expert review is expensive. Most findings never get labeled, which is the positive-unlabeled structure this project investigates.</figcaption>
         </figure>
 
-        <p>The result is the PU structure shown in Figure 4: a small set of confirmed positives and a large pool of unlabeled data with no confirmed negatives. PU learning has been studied for vision and tabular data <a href="#ref_12">[12]</a>, and PILOT <a href="#ref_4">[4]</a> recently demonstrated it can work for vulnerability detection. But a fundamental question remains unanswered:</p>
+        <p>The result is the PU structure shown in Figure 3, a small set of confirmed positives and a large pool of unlabeled data with no confirmed negatives. PU learning has been studied for vision and tabular data <a href="#ref_11">[11]</a>, and PILOT <a href="#ref_3">[3]</a> recently demonstrated it can work for vulnerability detection. But a fundamental question remains unanswered.</p>
 
         <div class="callout hypothesis">
             <div class="callout-label">Hypothesis</div>
-            There exists a minimum number of labeled positives below which PU learning collapses, and above which it recovers most of the performance of full supervision. The two dominant families of PU methods, risk estimators and pseudo-labeling, hit this threshold at different points and for different reasons. Effectiveness also varies across vulnerability types: syntactically distinctive bugs should be easier to detect with limited labels than semantically subtle ones.
+            There exists a minimum number of labeled positives below which PU learning collapses, and above which it recovers most of the performance of full supervision. The two dominant families of PU methods, risk estimators and pseudo-labeling, hit this threshold at different points and for different reasons. Effectiveness also varies across vulnerability types. Syntactically distinctive bugs should be easier to detect with limited labels than semantically subtle ones.
         </div>
 
-        <p>This project uses vulnerability detection as a laboratory for studying PU learning behavior. Rather than proposing a new method, I investigate when PU learning works on code, how many labeled examples it actually needs, and what makes it break.</p>
+        <p>This project uses vulnerability detection as a laboratory for studying PU learning behavior. Rather than proposing a new method, I investigate when PU learning works on code and what makes it break.</p>
     </section>
 
     <!-- ============================================ -->
@@ -442,12 +510,6 @@
     <!-- ============================================ -->
     <section id="background">
         <h2>Background</h2>
-
-        <h3>The Labeling Problem</h3>
-
-        <p>Consider a security team responsible for a large C/C++ codebase. They run static analysis tools that flag thousands of potential issues. Each one requires manual review: an expert reads the surrounding code, traces data flows, and determines whether the pattern constitutes a real, exploitable vulnerability. This process takes 15&ndash;60 minutes per finding. The team labels the clear cases, confirmed vulnerabilities and obvious false positives, but the ambiguous middle ground (the majority) remains unreviewed.</p>
-
-        <p>The result is a dataset with two kinds of labels:</p>
 
         <!-- PU Diagram -->
         <figure>
@@ -495,33 +557,23 @@
                 <circle cx="400" cy="270" r="7" fill="#484f58"/><text x="414" y="275" fill="#8b949e" font-size="14">Truly benign</text>
                 <circle cx="540" cy="270" r="7" fill="#f85149" opacity="0.8"/><text x="554" y="275" fill="#8b949e" font-size="14">Hidden vulnerable</text>
             </svg>
-            <figcaption>Figure 4: The PU learning setup for vulnerability detection. Labeled positives (P) are confirmed CVEs. The unlabeled set (U) contains both truly benign code and undiscovered vulnerabilities, and there is no way to tell which is which.</figcaption>
+            <figcaption>Figure 3. The PU learning setup for vulnerability detection. Labeled positives (P) are confirmed CVEs. The unlabeled set (U) contains both truly benign code and undiscovered vulnerabilities, and there is no way to tell which is which.</figcaption>
         </figure>
 
-        <p>Labeled positives (P) are functions with confirmed vulnerabilities, backed by CVE reports and security patches. These labels are reliable. Unlabeled data (U) is everything else, a collection of functions that might be safe or might contain undiscovered flaws. There are no confirmed negatives. No function has been certified as "definitely not vulnerable."</p>
+        <h3>PU learning has two families</h3>
 
-        <h3>PU learning: two families</h3>
-
-        <p>PU learning addresses exactly this setting. Train a binary classifier given only P and U, without assuming U is purely negative. Two distinct families of methods have emerged <a href="#ref_12">[12]</a>, <a href="#ref_5">[5]</a>:</p>
+        <p>PU learning is the standard name for this problem. Train a classifier from positives and unlabeled data, with no confirmed negatives. The published methods <a href="#ref_11">[11]</a>, <a href="#ref_4">[4]</a> split into two families that differ in how they handle the unlabeled set.</p>
 
         <div class="callout key-insight">
             <div class="callout-label">Key Distinction</div>
-            Risk estimator methods modify the classification loss to mathematically account for hidden positives in U. Pseudo-labeling methods iteratively identify likely negatives in U, then train a standard classifier on the expanded label set. These two families make different assumptions and fail in different ways.
+            Risk estimator methods modify the classification loss to account for hidden positives in U. Pseudo-labeling methods iteratively identify likely negatives in U, then train a standard classifier on the expanded label set. The two families make different assumptions and fail in different ways.
         </div>
 
-        <p>Risk estimator methods. The foundational unbiased PU risk estimator <a href="#ref_1">[1]</a> rewrites the binary classification risk using only the P and U distributions, plus an estimate of the class prior (the true fraction of positives). This is elegant but fragile: the empirical risk can go negative, destabilizing training. Non-negative PU (nnPU) <a href="#ref_2">[2]</a> clips the negative risk term. GradPU <a href="#ref_3">[3]</a> adds a gradient penalty for Lipschitz continuity. These methods all require knowing or estimating the class prior, a quantity that is rarely available in practice. I use nnPU as the representative of this family. It is the standard baseline that all later methods compare against, and simple enough to isolate the approach's behavior from implementation complexity.</p>
+        <p>The risk-estimator family rewrites the loss to account for hidden positives in U. nnPU <a href="#ref_2">[2]</a> is a stability-corrected variant of the unbiased PU risk <a href="#ref_1">[1]</a>, and I use it as the family representative.</p>
 
-        <p>Pseudo-labeling methods. Self-training <a href="#ref_11">[11]</a> takes a simpler approach. Train an initial classifier treating U as negative, use it to score U and select high-confidence negatives, retrain on P plus selected negatives, and repeat. PILOT <a href="#ref_4">[4]</a> extends this with distance-aware label selection for vulnerability detection. These methods are prior-free. They don't need an estimate of the class prior, but they depend on the quality of the initial representations.</p>
+        <p>The pseudo-labeling family does not need a prior estimate. Instead it uses an initial classifier to identify likely negatives within U, then retrains. Self-training <a href="#ref_10">[10]</a> is the canonical version, and the one I use here. PILOT <a href="#ref_3">[3]</a> is a recent variant for vulnerability detection that uses distance-aware label selection.</p>
 
-        <p>A NeurIPS 2025 empirical study <a href="#ref_5">[5]</a> compared these two families head-to-head on standard benchmarks and proposed a unified framework. However, their evaluation used only general-purpose datasets, not code representations or domain-specific tasks with extreme class imbalance.</p>
-
-        <h3>Vulnerability Detection with Code Models</h3>
-
-        <p>Modern vulnerability detection relies on pretrained code language models. Devign <a href="#ref_8">[8]</a> uses graph neural networks over code property graphs. LineVul <a href="#ref_9">[9]</a> showed strong results by fine-tuning CodeBERT <a href="#ref_7">[7]</a> for vulnerability classification. Chakraborty et al. <a href="#ref_10">[10]</a> highlighted that label noise is a serious problem in vulnerability datasets, with "benign" labels being particularly unreliable, which is exactly the motivation for PU learning. PrimeVul <a href="#ref_6">[6]</a> addresses these label quality issues and provides cleaner benchmarks with chronological splits and deployment-oriented metrics.</p>
-
-        <h3>The Gap</h3>
-
-        <p>PILOT <a href="#ref_4">[4]</a> showed PU learning is viable for vulnerability detection, but focused on proposing a new method rather than investigating when and why PU learning works. The NeurIPS 2025 study <a href="#ref_5">[5]</a> compared PU approaches but only on general benchmarks, not code. No prior work evaluates: (a) how PU methods perform as a function of labeling budget on code representations, (b) how sensitive risk estimators are to class prior estimation at extreme imbalance (~3% positive), or (c) how performance varies across vulnerability categories with different syntactic signatures.</p>
+        <p>Of prior PU work on vulnerability detection, PILOT is the closest. It is a method paper, with PU baselines compared at a single 30% labeling ratio and no per-CWE breakdown. A general empirical comparison of PU families <a href="#ref_4">[4]</a> worked on image and tabular benchmarks rather than code. Neither answers how PU performance scales with the labeling budget on code, or whether the two families fail at different points.</p>
 
         <div class="stats-row">
             <div class="stat-badge">
@@ -537,8 +589,8 @@
                 <div class="label">CWE Types</div>
             </div>
             <div class="stat-badge">
-                <div class="number">768-d</div>
-                <div class="label">Embedding Dim</div>
+                <div class="number">768</div>
+                <div class="label">Embedding Dimensions</div>
             </div>
         </div>
     </section>
@@ -551,13 +603,13 @@
 
         <h3>Why Not End-to-End Fine-Tuning?</h3>
 
-        <p>The natural approach would be to fine-tune CodeBERT end-to-end for each experimental configuration: each PU method, each labeling fraction, each class prior value, each random seed. With 4 methods, 7 labeling fractions, 5 prior values, and 3 seeds, that is over 100 training runs. Each fine-tuning run on 176K functions takes 5&ndash;10 hours on a single GPU. I estimated the total compute cost and:</p>
+        <p>The natural approach would be to fine-tune CodeBERT end-to-end for each configuration (method × labeling fraction × prior × seed). This is roughly what PILOT <a href="#ref_3">[3]</a>, the closest prior PU work on code, does with its multi-stage contrastive pipeline. For my full sweep that is over 100 training runs at 5&ndash;10 hours each on a single GPU. I estimated the total compute cost.</p>
 
         <figure>
             <img src="./images/gpu_costs.gif" alt="K-2SO from Rogue One saying: It's high. It's very high." style="max-width: 480px; border-radius: 8px; border: 1px solid var(--border);"/>
         </figure>
 
-        <p>Instead, I use a feature extraction strategy that decouples the representation from the PU investigation. The pipeline has two stages. First, every function is passed through a frozen CodeBERT model <a href="#ref_7">[7]</a> exactly once, producing a 768-dimensional [CLS] embedding that serves as the function's fixed representation. Second, all PU experiments operate on these embeddings with lightweight MLP classifiers that train in seconds on CPU. This cuts a 500+ GPU-hour experiment plan down to about an hour of CPU time, which is what lets me produce proper error bars and sweep across dozens of configurations.</p>
+        <p>Instead, I use a feature extraction strategy that decouples the representation from the PU investigation. The pipeline has two stages. First, every function is passed through a frozen encoder exactly once, producing a 768-dimensional [CLS] embedding that becomes its fixed representation. I run this extraction with two encoders in parallel. The primary is CodeBERT <a href="#ref_6">[6]</a> (microsoft/codebert-base, 125M parameters). The second is VulBERTa <a href="#ref_12">[12]</a> (claudios/VulBERTa-mlm), a RoBERTa-style model pretrained specifically on C/C++ with a vulnerability-aware tokenizer, used as a replication check. Second, all PU experiments operate on these embeddings with lightweight MLP classifiers that train in seconds on CPU. This cuts a 500+ GPU-hour plan down to about an hour of CPU time, which gives me room for proper error bars and sweeps across dozens of configurations on both representations.</p>
 
         <h3>The pipeline</h3>
 
@@ -605,7 +657,7 @@
                 <!-- ===== STAGE 2 ===== -->
                 <rect x="12" y="154" width="796" height="380" rx="12" fill="none" stroke="#2d2345" stroke-width="1"/>
                 <text x="32" y="176" class="st" fill="#bc8cff">STAGE 2</text>
-                <text x="120" y="176" class="sm" fill="#8b949e">Repeated, CPU only, ~30 sec per run</text>
+                <text x="120" y="176" class="sm" fill="#8b949e">Repeated, ~30-60 sec per run</text>
 
                 <!-- Connector from embeddings down -->
                 <path d="M 687 126 L 687 144 L 150 144 L 150 192" stroke="#484f58" stroke-width="1" stroke-dasharray="4,3" fill="none"/>
@@ -680,22 +732,20 @@
                 <rect x="120" y="586" width="520" height="88" rx="8" fill="#161b22" stroke="#30363d" stroke-width="1"/>
                 <rect x="146" y="600" width="100" height="28" rx="6" fill="rgba(63,185,80,0.08)" stroke="#3fb950" stroke-width="0.5"/>
                 <text x="196" y="620" text-anchor="middle" class="bd" fill="#3fb950">F1 score</text>
-                <rect x="260" y="600" width="76" height="28" rx="6" fill="rgba(88,166,255,0.08)" stroke="#58a6ff" stroke-width="0.5"/>
-                <text x="298" y="620" text-anchor="middle" class="bd" fill="#58a6ff">VDS</text>
-                <rect x="350" y="600" width="120" height="28" rx="6" fill="rgba(188,140,255,0.08)" stroke="#bc8cff" stroke-width="0.5"/>
-                <text x="410" y="620" text-anchor="middle" class="bd" fill="#bc8cff">Pairwise acc</text>
-                <rect x="484" y="600" width="132" height="28" rx="6" fill="rgba(210,153,34,0.08)" stroke="#d29922" stroke-width="0.5"/>
-                <text x="550" y="620" text-anchor="middle" class="bd" fill="#d29922">Per-CWE recall</text>
+                <rect x="260" y="600" width="96" height="28" rx="6" fill="rgba(88,166,255,0.08)" stroke="#58a6ff" stroke-width="0.5"/>
+                <text x="308" y="620" text-anchor="middle" class="bd" fill="#58a6ff">Miss rate</text>
+                <rect x="370" y="600" width="120" height="28" rx="6" fill="rgba(188,140,255,0.08)" stroke="#bc8cff" stroke-width="0.5"/>
+                <text x="430" y="620" text-anchor="middle" class="bd" fill="#bc8cff">Pairwise acc</text>
+                <rect x="504" y="600" width="132" height="28" rx="6" fill="rgba(210,153,34,0.08)" stroke="#d29922" stroke-width="0.5"/>
+                <text x="570" y="620" text-anchor="middle" class="bd" fill="#d29922">Per-CWE recall</text>
                 <text x="380" y="656" text-anchor="middle" class="sm" fill="#8b949e">24,788 test functions (549 vulnerable), never seen during training</text>
 
                 <text x="410" y="744" text-anchor="middle" class="sm" fill="#30363d">evaluate.py</text>
             </svg>
-            <figcaption>Figure 5: The experimental pipeline. CodeBERT converts source code into fixed embeddings once (Stage 1). All PU experiments operate on these embeddings with lightweight MLPs (Stage 2, ~30 seconds per configuration). Every checkpoint is scored on the held-out test set (Stage 3).</figcaption>
+            <figcaption>Figure 4. The experimental pipeline. CodeBERT converts source code into fixed embeddings once (Stage 1). All PU experiments operate on these embeddings with lightweight MLPs (Stage 2, ~30 seconds per configuration). Every checkpoint is scored on the held-out test set (Stage 3).</figcaption>
         </figure>
 
-        <p>The key property of this design is that Stages 2 and 3 are cheap. Changing the PU method, the labeling fraction, the class prior, or the random seed means retraining a 197K-parameter MLP on precomputed vectors. No GPU required. This is what makes the sweeps across dozens of configurations practical for a single person on a laptop.</p>
-
-        <p>I compare four methods spanning two PU families plus bounds:</p>
+        <p>I compare four methods spanning two PU families plus bounds.</p>
 
         <div class="method-grid">
             <div class="method-card">
@@ -711,7 +761,7 @@
             <div class="method-card">
                 <span class="tag risk-estimator">Risk Estimator</span>
                 <h4>nnPU</h4>
-                <p>Unbiased PU risk with non-negative correction <a href="#ref_2">[2]</a>. Requires a class prior estimate.</p>
+                <p>Risk estimator with a non-negative correction <a href="#ref_2">[2]</a>. Requires a class prior estimate.</p>
             </div>
             <div class="method-card">
                 <span class="tag pseudo-label">Pseudo-Labeling</span>
@@ -719,27 +769,51 @@
                 <p>Iteratively identifies likely negatives in U and retrains. Prior-free.</p>
             </div>
         </div>
+
+        <p>nnPU is the most involved of the four methods, so it is worth walking through the loss. The non-negative PU risk <a href="#ref_2">[2]</a> reweights the standard binary classification risk using only the labeled positive distribution, the unlabeled distribution, and a class prior &pi; = P(Y = 1).</p>
+
+        <p>The loss has three terms. The first is the loss on labeled positives, weighted by the prior. The second is the loss treating unlabeled samples as negative. The third subtracts off the negative-loss contribution that the unlabeled set inherited from its hidden positives, clamped at zero by the max(0, &middot;) so a flexible classifier cannot drive it below zero and destroy the model.</p>
+
+        <div class="math-block">
+            <div class="math-label">Non-negative PU risk (Kiryo et al., 2017)</div>
+            <svg style="vertical-align: -1.469ex;" xmlns="http://www.w3.org/2000/svg" width="100%" data-orig-width="75.785ex" height="4.07ex" role="img" focusable="false" aria-label="Non-negative PU risk equation, Kiryo et al. 2017" viewBox="0 -1149.5 33496.8 1799" xmlns:xlink="http://www.w3.org/1999/xlink"><defs><path id="MJX-1-TEX-I-1D445" d="M230 637Q203 637 198 638T193 649Q193 676 204 682Q206 683 378 683Q550 682 564 680Q620 672 658 652T712 606T733 563T739 529Q739 484 710 445T643 385T576 351T538 338L545 333Q612 295 612 223Q612 212 607 162T602 80V71Q602 53 603 43T614 25T640 16Q668 16 686 38T712 85Q717 99 720 102T735 105Q755 105 755 93Q755 75 731 36Q693 -21 641 -21H632Q571 -21 531 4T487 82Q487 109 502 166T517 239Q517 290 474 313Q459 320 449 321T378 323H309L277 193Q244 61 244 59Q244 55 245 54T252 50T269 48T302 46H333Q339 38 339 37T336 19Q332 6 326 0H311Q275 2 180 2Q146 2 117 2T71 2T50 1Q33 1 33 10Q33 12 36 24Q41 43 46 45Q50 46 61 46H67Q94 46 127 49Q141 52 146 61Q149 65 218 339T287 628Q287 635 230 637ZM630 554Q630 586 609 608T523 636Q521 636 500 636T462 637H440Q393 637 386 627Q385 624 352 494T319 361Q319 360 388 360Q466 361 492 367Q556 377 592 426Q608 449 619 486T630 554Z"></path><path id="MJX-1-TEX-SO-2C6" d="M279 669Q273 669 142 610T9 551L0 569Q-8 585 -8 587Q-8 588 -7 588L12 598Q30 608 66 628T136 666L277 744L564 587L555 569Q549 556 547 554T544 552Q539 555 410 612T279 669Z"></path><path id="MJX-1-TEX-N-6E" d="M41 46H55Q94 46 102 60V68Q102 77 102 91T102 122T103 161T103 203Q103 234 103 269T102 328V351Q99 370 88 376T43 385H25V408Q25 431 27 431L37 432Q47 433 65 434T102 436Q119 437 138 438T167 441T178 442H181V402Q181 364 182 364T187 369T199 384T218 402T247 421T285 437Q305 442 336 442Q450 438 463 329Q464 322 464 190V104Q464 66 466 59T477 49Q498 46 526 46H542V0H534L510 1Q487 2 460 2T422 3Q319 3 310 0H302V46H318Q379 46 379 62Q380 64 380 200Q379 335 378 343Q372 371 358 385T334 402T308 404Q263 404 229 370Q202 343 195 315T187 232V168V108Q187 78 188 68T191 55T200 49Q221 46 249 46H265V0H257L234 1Q210 2 183 2T145 3Q42 3 33 0H25V46H41Z"></path><path id="MJX-1-TEX-N-70" d="M36 -148H50Q89 -148 97 -134V-126Q97 -119 97 -107T97 -77T98 -38T98 6T98 55T98 106Q98 140 98 177T98 243T98 296T97 335T97 351Q94 370 83 376T38 385H20V408Q20 431 22 431L32 432Q42 433 61 434T98 436Q115 437 135 438T165 441T176 442H179V416L180 390L188 397Q247 441 326 441Q407 441 464 377T522 216Q522 115 457 52T310 -11Q242 -11 190 33L182 40V-45V-101Q182 -128 184 -134T195 -145Q216 -148 244 -148H260V-194H252L228 -193Q205 -192 178 -192T140 -191Q37 -191 28 -194H20V-148H36ZM424 218Q424 292 390 347T305 402Q234 402 182 337V98Q222 26 294 26Q345 26 384 80T424 218Z"></path><path id="MJX-1-TEX-N-75" d="M383 58Q327 -10 256 -10H249Q124 -10 105 89Q104 96 103 226Q102 335 102 348T96 369Q86 385 36 385H25V408Q25 431 27 431L38 432Q48 433 67 434T105 436Q122 437 142 438T172 441T184 442H187V261Q188 77 190 64Q193 49 204 40Q224 26 264 26Q290 26 311 35T343 58T363 90T375 120T379 144Q379 145 379 161T380 201T380 248V315Q380 361 370 372T320 385H302V431Q304 431 378 436T457 442H464V264Q464 84 465 81Q468 61 479 55T524 46H542V0Q540 0 467 -5T390 -11H383V58Z"></path><path id="MJX-1-TEX-N-28" d="M94 250Q94 319 104 381T127 488T164 576T202 643T244 695T277 729T302 750H315H319Q333 750 333 741Q333 738 316 720T275 667T226 581T184 443T167 250T184 58T225 -81T274 -167T316 -220T333 -241Q333 -250 318 -250H315H302L274 -226Q180 -141 137 -14T94 250Z"></path><path id="MJX-1-TEX-I-1D453" d="M118 -162Q120 -162 124 -164T135 -167T147 -168Q160 -168 171 -155T187 -126Q197 -99 221 27T267 267T289 382V385H242Q195 385 192 387Q188 390 188 397L195 425Q197 430 203 430T250 431Q298 431 298 432Q298 434 307 482T319 540Q356 705 465 705Q502 703 526 683T550 630Q550 594 529 578T487 561Q443 561 443 603Q443 622 454 636T478 657L487 662Q471 668 457 668Q445 668 434 658T419 630Q412 601 403 552T387 469T380 433Q380 431 435 431Q480 431 487 430T498 424Q499 420 496 407T491 391Q489 386 482 386T428 385H372L349 263Q301 15 282 -47Q255 -132 212 -173Q175 -205 139 -205Q107 -205 81 -186T55 -132Q55 -95 76 -78T118 -61Q162 -61 162 -103Q162 -122 151 -136T127 -157L118 -162Z"></path><path id="MJX-1-TEX-N-29" d="M60 749L64 750Q69 750 74 750H86L114 726Q208 641 251 514T294 250Q294 182 284 119T261 12T224 -76T186 -143T145 -194T113 -227T90 -246Q87 -249 86 -250H74Q66 -250 63 -250T58 -247T55 -238Q56 -237 66 -225Q221 -64 221 250T66 725Q56 737 55 738Q55 746 60 749Z"></path><path id="MJX-1-TEX-N-3D" d="M56 347Q56 360 70 367H707Q722 359 722 347Q722 336 708 328L390 327H72Q56 332 56 347ZM56 153Q56 168 72 173H708Q722 163 722 153Q722 140 707 133H70Q56 140 56 153Z"></path><path id="MJX-1-TEX-I-1D70B" d="M132 -11Q98 -11 98 22V33L111 61Q186 219 220 334L228 358H196Q158 358 142 355T103 336Q92 329 81 318T62 297T53 285Q51 284 38 284Q19 284 19 294Q19 300 38 329T93 391T164 429Q171 431 389 431Q549 431 553 430Q573 423 573 402Q573 371 541 360Q535 358 472 358H408L405 341Q393 269 393 222Q393 170 402 129T421 65T431 37Q431 20 417 5T381 -10Q370 -10 363 -7T347 17T331 77Q330 86 330 121Q330 170 339 226T357 318T367 358H269L268 354Q268 351 249 275T206 114T175 17Q164 -11 132 -11Z"></path><path id="MJX-1-TEX-D-1D53C" d="M12 666Q12 675 24 683H582Q590 680 593 672V588Q593 514 591 502T575 490Q567 490 563 495T555 517Q552 556 517 590Q486 623 445 634T340 648H282Q266 636 264 620T260 492V370H277Q329 375 358 391T404 439Q420 480 420 506Q420 529 436 529Q445 529 451 521Q455 517 455 361Q455 333 455 298T456 253Q456 217 453 207T437 197Q420 196 420 217Q420 240 406 270Q377 328 284 335H260V201Q261 174 261 134Q262 73 264 61T278 38Q281 36 282 35H331Q400 35 449 50Q571 93 602 179Q605 203 622 203Q629 203 634 197T640 183Q638 181 624 95T604 3L600 -1H24Q12 5 12 16Q12 35 51 35Q92 38 97 52Q102 60 102 341T97 632Q91 645 51 648Q12 648 12 666ZM137 341Q137 131 136 89T130 37Q129 36 129 35H235Q233 41 231 48L226 61V623L231 635L235 648H129Q132 641 133 638T135 603T137 517T137 341ZM557 603V648H504Q504 646 515 639Q527 634 542 619L557 603ZM420 317V397L406 383Q394 370 380 363L366 355Q373 350 382 346Q400 333 409 328L420 317ZM582 61L586 88Q585 88 582 83Q557 61 526 46L511 37L542 35H577Q577 36 578 39T580 49T582 61Z"></path><path id="MJX-1-TEX-I-1D443" d="M287 628Q287 635 230 637Q206 637 199 638T192 648Q192 649 194 659Q200 679 203 681T397 683Q587 682 600 680Q664 669 707 631T751 530Q751 453 685 389Q616 321 507 303Q500 302 402 301H307L277 182Q247 66 247 59Q247 55 248 54T255 50T272 48T305 46H336Q342 37 342 35Q342 19 335 5Q330 0 319 0Q316 0 282 1T182 2Q120 2 87 2T51 1Q33 1 33 11Q33 13 36 25Q40 41 44 43T67 46Q94 46 127 49Q141 52 146 61Q149 65 218 339T287 628ZM645 554Q645 567 643 575T634 597T609 619T560 635Q553 636 480 637Q463 637 445 637T416 636T404 636Q391 635 386 627Q384 621 367 550T332 412T314 344Q314 342 395 342H407H430Q542 342 590 392Q617 419 631 471T645 554Z"></path><path id="MJX-1-TEX-N-5B" d="M118 -250V750H255V710H158V-210H255V-250H118Z"></path><path id="MJX-1-TEX-I-2113" d="M345 104T349 104T361 95T369 80T352 59Q268 -20 206 -20Q170 -20 146 3T113 53T99 104L94 129Q94 130 79 116T48 86T28 70Q22 70 15 79T7 94Q7 98 12 103T58 147L91 179V185Q91 186 91 191T92 200Q92 282 128 400T223 612T336 705Q397 705 397 636V627Q397 453 194 233Q185 223 180 218T174 211T171 208T165 201L163 186Q159 142 159 123Q159 17 208 17Q228 17 253 30T293 56T335 94Q345 104 349 104ZM360 634Q360 655 354 661T336 668Q328 668 322 666T302 645T272 592Q252 547 229 467T192 330L179 273Q179 272 186 280T204 300T221 322Q327 453 355 590Q360 612 360 634Z"></path><path id="MJX-1-TEX-I-1D465" d="M52 289Q59 331 106 386T222 442Q257 442 286 424T329 379Q371 442 430 442Q467 442 494 420T522 361Q522 332 508 314T481 292T458 288Q439 288 427 299T415 328Q415 374 465 391Q454 404 425 404Q412 404 406 402Q368 386 350 336Q290 115 290 78Q290 50 306 38T341 26Q378 26 414 59T463 140Q466 150 469 151T485 153H489Q504 153 504 145Q504 144 502 134Q486 77 440 33T333 -11Q263 -11 227 52Q186 -10 133 -10H127Q78 -10 57 16T35 71Q35 103 54 123T99 143Q142 143 142 101Q142 81 130 66T107 46T94 41L91 40Q91 39 97 36T113 29T132 26Q168 26 194 71Q203 87 217 139T245 247T261 313Q266 340 266 352Q266 380 251 392T217 404Q177 404 142 372T93 290Q91 281 88 280T72 278H58Q52 284 52 289Z"></path><path id="MJX-1-TEX-N-2C" d="M78 35T78 60T94 103T137 121Q165 121 187 96T210 8Q210 -27 201 -60T180 -117T154 -158T130 -185T117 -194Q113 -194 104 -185T95 -172Q95 -168 106 -156T131 -126T157 -76T173 -3V9L172 8Q170 7 167 6T161 3T152 1T140 0Q113 0 96 17Z"></path><path id="MJX-1-TEX-N-2B" d="M56 237T56 250T70 270H369V420L370 570Q380 583 389 583Q402 583 409 568V270H707Q722 262 722 250T707 230H409V-68Q401 -82 391 -82H389H387Q375 -82 369 -68V230H70Q56 237 56 250Z"></path><path id="MJX-1-TEX-N-31" d="M213 578L200 573Q186 568 160 563T102 556H83V602H102Q149 604 189 617T245 641T273 663Q275 666 285 666Q294 666 302 660V361L303 61Q310 54 315 52T339 48T401 46H427V0H416Q395 3 257 3Q121 3 100 0H88V46H114Q136 46 152 46T177 47T193 50T201 52T207 57T213 61V578Z"></path><path id="MJX-1-TEX-N-5D" d="M22 710V750H159V-250H22V-210H119V710H22Z"></path><path id="MJX-1-TEX-N-6D" d="M41 46H55Q94 46 102 60V68Q102 77 102 91T102 122T103 161T103 203Q103 234 103 269T102 328V351Q99 370 88 376T43 385H25V408Q25 431 27 431L37 432Q47 433 65 434T102 436Q119 437 138 438T167 441T178 442H181V402Q181 364 182 364T187 369T199 384T218 402T247 421T285 437Q305 442 336 442Q351 442 364 440T387 434T406 426T421 417T432 406T441 395T448 384T452 374T455 366L457 361L460 365Q463 369 466 373T475 384T488 397T503 410T523 422T546 432T572 439T603 442Q729 442 740 329Q741 322 741 190V104Q741 66 743 59T754 49Q775 46 803 46H819V0H811L788 1Q764 2 737 2T699 3Q596 3 587 0H579V46H595Q656 46 656 62Q657 64 657 200Q656 335 655 343Q649 371 635 385T611 402T585 404Q540 404 506 370Q479 343 472 315T464 232V168V108Q464 78 465 68T468 55T477 49Q498 46 526 46H542V0H534L510 1Q487 2 460 2T422 3Q319 3 310 0H302V46H318Q379 46 379 62Q380 64 380 200Q379 335 378 343Q372 371 358 385T334 402T308 404Q263 404 229 370Q202 343 195 315T187 232V168V108Q187 78 188 68T191 55T200 49Q221 46 249 46H265V0H257L234 1Q210 2 183 2T145 3Q42 3 33 0H25V46H41Z"></path><path id="MJX-1-TEX-N-61" d="M137 305T115 305T78 320T63 359Q63 394 97 421T218 448Q291 448 336 416T396 340Q401 326 401 309T402 194V124Q402 76 407 58T428 40Q443 40 448 56T453 109V145H493V106Q492 66 490 59Q481 29 455 12T400 -6T353 12T329 54V58L327 55Q325 52 322 49T314 40T302 29T287 17T269 6T247 -2T221 -8T190 -11Q130 -11 82 20T34 107Q34 128 41 147T68 188T116 225T194 253T304 268H318V290Q318 324 312 340Q290 411 215 411Q197 411 181 410T156 406T148 403Q170 388 170 359Q170 334 154 320ZM126 106Q126 75 150 51T209 26Q247 26 276 49T315 109Q317 116 318 175Q318 233 317 233Q309 233 296 232T251 223T193 203T147 166T126 106Z"></path><path id="MJX-1-TEX-N-78" d="M201 0Q189 3 102 3Q26 3 17 0H11V46H25Q48 47 67 52T96 61T121 78T139 96T160 122T180 150L226 210L168 288Q159 301 149 315T133 336T122 351T113 363T107 370T100 376T94 379T88 381T80 383Q74 383 44 385H16V431H23Q59 429 126 429Q219 429 229 431H237V385Q201 381 201 369Q201 367 211 353T239 315T268 274L272 270L297 304Q329 345 329 358Q329 364 327 369T322 376T317 380T310 384L307 385H302V431H309Q324 428 408 428Q487 428 493 431H499V385H492Q443 385 411 368Q394 360 377 341T312 257L296 236L358 151Q424 61 429 57T446 50Q464 46 499 46H516V0H510H502Q494 1 482 1T457 2T432 2T414 3Q403 3 377 3T327 1L304 0H295V46H298Q309 46 320 51T331 63Q331 65 291 120L250 175Q249 174 219 133T185 88Q181 83 181 74Q181 63 188 55T206 46Q208 46 208 23V0H201Z"></path><path id="MJX-1-TEX-LO-28" d="M180 96T180 250T205 541T266 770T353 944T444 1069T527 1150H555Q561 1144 561 1141Q561 1137 545 1120T504 1072T447 995T386 878T330 721T288 513T272 251Q272 133 280 56Q293 -87 326 -209T399 -405T475 -531T536 -609T561 -640Q561 -643 555 -649H527Q483 -612 443 -568T353 -443T266 -270T205 -41Z"></path><path id="MJX-1-TEX-N-30" d="M96 585Q152 666 249 666Q297 666 345 640T423 548Q460 465 460 320Q460 165 417 83Q397 41 362 16T301 -15T250 -22Q224 -22 198 -16T137 16T82 83Q39 165 39 320Q39 494 96 585ZM321 597Q291 629 250 629Q208 629 178 597Q153 571 145 525T137 333Q137 175 145 125T181 46Q209 16 250 16Q290 16 318 46Q347 76 354 130T362 333Q362 478 354 524T321 597Z"></path><path id="MJX-1-TEX-N-A0" d=""></path><path id="MJX-1-TEX-I-1D448" d="M107 637Q73 637 71 641Q70 643 70 649Q70 673 81 682Q83 683 98 683Q139 681 234 681Q268 681 297 681T342 682T362 682Q378 682 378 672Q378 670 376 658Q371 641 366 638H364Q362 638 359 638T352 638T343 637T334 637Q295 636 284 634T266 623Q265 621 238 518T184 302T154 169Q152 155 152 140Q152 86 183 55T269 24Q336 24 403 69T501 205L552 406Q599 598 599 606Q599 633 535 637Q511 637 511 648Q511 650 513 660Q517 676 519 679T529 683Q532 683 561 682T645 680Q696 680 723 681T752 682Q767 682 767 672Q767 650 759 642Q756 637 737 637Q666 633 648 597Q646 592 598 404Q557 235 548 205Q515 105 433 42T263 -22Q171 -22 116 34T60 167V183Q60 201 115 421Q164 622 164 628Q164 635 107 637Z"></path><path id="MJX-1-TEX-N-2212" d="M84 237T84 250T98 270H679Q694 262 694 250T679 230H98Q84 237 84 250Z"></path><path id="MJX-1-TEX-LO-29" d="M35 1138Q35 1150 51 1150H56H69Q113 1113 153 1069T243 944T330 771T391 541T416 250T391 -40T330 -270T243 -443T152 -568T69 -649H56Q43 -649 39 -647T35 -637Q65 -607 110 -548Q283 -316 316 56Q324 133 324 251Q324 368 316 445Q278 877 48 1123Q36 1137 35 1138Z"></path><path id="MJX-1-TEX-N-2E" d="M78 60Q78 84 95 102T138 120Q162 120 180 104T199 61Q199 36 182 18T139 0T96 17T78 60Z"></path></defs><g stroke="currentColor" fill="currentColor" stroke-width="0" transform="scale(1,-1)"><g data-mml-node="math"><g data-mml-node="msub"><g data-mml-node="TeXAtom" data-mjx-texclass="ORD"><g data-mml-node="mover"><g data-mml-node="mi"><use data-c="1D445" xlink:href="#MJX-1-TEX-I-1D445"></use></g><g data-mml-node="mo" transform="translate(462.8,237) translate(-278 0)"><use data-c="2C6" xlink:href="#MJX-1-TEX-SO-2C6"></use></g></g></g><g data-mml-node="TeXAtom" transform="translate(792,-150) scale(0.707)" data-mjx-texclass="ORD"><g data-mml-node="mtext"><use data-c="6E" xlink:href="#MJX-1-TEX-N-6E"></use><use data-c="6E" xlink:href="#MJX-1-TEX-N-6E" transform="translate(556,0)"></use><use data-c="70" xlink:href="#MJX-1-TEX-N-70" transform="translate(1112,0)"></use><use data-c="75" xlink:href="#MJX-1-TEX-N-75" transform="translate(1668,0)"></use></g></g></g><g data-mml-node="mo" transform="translate(2414.6,0)"><use data-c="28" xlink:href="#MJX-1-TEX-N-28"></use></g><g data-mml-node="mi" transform="translate(2803.6,0)"><use data-c="1D453" xlink:href="#MJX-1-TEX-I-1D453"></use></g><g data-mml-node="mo" transform="translate(3353.6,0)"><use data-c="29" xlink:href="#MJX-1-TEX-N-29"></use></g><g data-mml-node="mo" transform="translate(4020.4,0)"><use data-c="3D" xlink:href="#MJX-1-TEX-N-3D"></use></g><g data-mml-node="mi" transform="translate(5076.2,0)"><use data-c="1D70B" xlink:href="#MJX-1-TEX-I-1D70B"></use></g><g data-mml-node="mstyle" transform="translate(5646.2,0)"><g data-mml-node="mspace"></g></g><g data-mml-node="msub" transform="translate(5813.2,0)"><g data-mml-node="TeXAtom" data-mjx-texclass="ORD"><g data-mml-node="mover"><g data-mml-node="TeXAtom" data-mjx-texclass="ORD"><g data-mml-node="mi"><use data-c="1D53C" xlink:href="#MJX-1-TEX-D-1D53C"></use></g></g><g data-mml-node="mo" transform="translate(333.5,237) translate(-278 0)"><use data-c="2C6" xlink:href="#MJX-1-TEX-SO-2C6"></use></g></g></g><g data-mml-node="TeXAtom" transform="translate(700,-150) scale(0.707)" data-mjx-texclass="ORD"><g data-mml-node="mi"><use data-c="1D443" xlink:href="#MJX-1-TEX-I-1D443"></use></g></g></g><g data-mml-node="mstyle" transform="translate(7094.2,0)"><g data-mml-node="mspace"></g></g><g data-mml-node="mrow" transform="translate(7093.9,0)"><g data-mml-node="mo"><use data-c="5B" xlink:href="#MJX-1-TEX-N-5B"></use></g><g data-mml-node="mi" transform="translate(278,0)"><use data-c="2113" xlink:href="#MJX-1-TEX-I-2113"></use></g><g data-mml-node="mo" transform="translate(695,0)"><use data-c="28" xlink:href="#MJX-1-TEX-N-28"></use></g><g data-mml-node="mi" transform="translate(1084,0)"><use data-c="1D453" xlink:href="#MJX-1-TEX-I-1D453"></use></g><g data-mml-node="mo" transform="translate(1634,0)"><use data-c="28" xlink:href="#MJX-1-TEX-N-28"></use></g><g data-mml-node="mi" transform="translate(2023,0)"><use data-c="1D465" xlink:href="#MJX-1-TEX-I-1D465"></use></g><g data-mml-node="mo" transform="translate(2595,0)"><use data-c="29" xlink:href="#MJX-1-TEX-N-29"></use></g><g data-mml-node="mo" transform="translate(2984,0)"><use data-c="2C" xlink:href="#MJX-1-TEX-N-2C"></use></g><g data-mml-node="mo" transform="translate(3428.7,0)"><use data-c="2B" xlink:href="#MJX-1-TEX-N-2B"></use></g><g data-mml-node="mn" transform="translate(4206.7,0)"><use data-c="31" xlink:href="#MJX-1-TEX-N-31"></use></g><g data-mml-node="mo" transform="translate(4706.7,0)"><use data-c="29" xlink:href="#MJX-1-TEX-N-29"></use></g><g data-mml-node="mo" transform="translate(5095.7,0)"><use data-c="5D" xlink:href="#MJX-1-TEX-N-5D"></use></g></g><g data-mml-node="mo" transform="translate(12689.8,0)"><use data-c="2B" xlink:href="#MJX-1-TEX-N-2B"></use></g><g data-mml-node="mo" transform="translate(13690,0)"><use data-c="6D" xlink:href="#MJX-1-TEX-N-6D"></use><use data-c="61" xlink:href="#MJX-1-TEX-N-61" transform="translate(833,0)"></use><use data-c="78" xlink:href="#MJX-1-TEX-N-78" transform="translate(1333,0)"></use></g><g data-mml-node="mstyle" transform="translate(15551,0)"><g data-mml-node="mspace"></g></g><g data-mml-node="mrow" transform="translate(15550.6,0)"><g data-mml-node="mo" transform="translate(0 -0.5)"><use data-c="28" xlink:href="#MJX-1-TEX-LO-28"></use></g><g data-mml-node="mn" transform="translate(597,0)"><use data-c="30" xlink:href="#MJX-1-TEX-N-30"></use></g><g data-mml-node="mo" transform="translate(1097,0)"><use data-c="2C" xlink:href="#MJX-1-TEX-N-2C"></use></g><g data-mml-node="mtext" transform="translate(1541.7,0)"><use data-c="A0" xlink:href="#MJX-1-TEX-N-A0"></use></g><g data-mml-node="msub" transform="translate(1791.7,0)"><g data-mml-node="TeXAtom" data-mjx-texclass="ORD"><g data-mml-node="mover"><g data-mml-node="TeXAtom" data-mjx-texclass="ORD"><g data-mml-node="mi"><use data-c="1D53C" xlink:href="#MJX-1-TEX-D-1D53C"></use></g></g><g data-mml-node="mo" transform="translate(333.5,237) translate(-278 0)"><use data-c="2C6" xlink:href="#MJX-1-TEX-SO-2C6"></use></g></g></g><g data-mml-node="TeXAtom" transform="translate(700,-150) scale(0.707)" data-mjx-texclass="ORD"><g data-mml-node="mi"><use data-c="1D448" xlink:href="#MJX-1-TEX-I-1D448"></use></g></g></g><g data-mml-node="mstyle" transform="translate(3084,0)"><g data-mml-node="mspace"></g></g><g data-mml-node="mrow" transform="translate(3083.7,0)"><g data-mml-node="mo"><use data-c="5B" xlink:href="#MJX-1-TEX-N-5B"></use></g><g data-mml-node="mi" transform="translate(278,0)"><use data-c="2113" xlink:href="#MJX-1-TEX-I-2113"></use></g><g data-mml-node="mo" transform="translate(695,0)"><use data-c="28" xlink:href="#MJX-1-TEX-N-28"></use></g><g data-mml-node="mi" transform="translate(1084,0)"><use data-c="1D453" xlink:href="#MJX-1-TEX-I-1D453"></use></g><g data-mml-node="mo" transform="translate(1634,0)"><use data-c="28" xlink:href="#MJX-1-TEX-N-28"></use></g><g data-mml-node="mi" transform="translate(2023,0)"><use data-c="1D465" xlink:href="#MJX-1-TEX-I-1D465"></use></g><g data-mml-node="mo" transform="translate(2595,0)"><use data-c="29" xlink:href="#MJX-1-TEX-N-29"></use></g><g data-mml-node="mo" transform="translate(2984,0)"><use data-c="2C" xlink:href="#MJX-1-TEX-N-2C"></use></g><g data-mml-node="mo" transform="translate(3428.7,0)"><use data-c="2212" xlink:href="#MJX-1-TEX-N-2212"></use></g><g data-mml-node="mn" transform="translate(4206.7,0)"><use data-c="31" xlink:href="#MJX-1-TEX-N-31"></use></g><g data-mml-node="mo" transform="translate(4706.7,0)"><use data-c="29" xlink:href="#MJX-1-TEX-N-29"></use></g><g data-mml-node="mo" transform="translate(5095.7,0)"><use data-c="5D" xlink:href="#MJX-1-TEX-N-5D"></use></g></g><g data-mml-node="mo" transform="translate(8679.6,0)"><use data-c="2212" xlink:href="#MJX-1-TEX-N-2212"></use></g><g data-mml-node="mi" transform="translate(9679.8,0)"><use data-c="1D70B" xlink:href="#MJX-1-TEX-I-1D70B"></use></g><g data-mml-node="mstyle" transform="translate(10249.8,0)"><g data-mml-node="mspace"></g></g><g data-mml-node="msub" transform="translate(10416.8,0)"><g data-mml-node="TeXAtom" data-mjx-texclass="ORD"><g data-mml-node="mover"><g data-mml-node="TeXAtom" data-mjx-texclass="ORD"><g data-mml-node="mi"><use data-c="1D53C" xlink:href="#MJX-1-TEX-D-1D53C"></use></g></g><g data-mml-node="mo" transform="translate(333.5,237) translate(-278 0)"><use data-c="2C6" xlink:href="#MJX-1-TEX-SO-2C6"></use></g></g></g><g data-mml-node="TeXAtom" transform="translate(700,-150) scale(0.707)" data-mjx-texclass="ORD"><g data-mml-node="mi"><use data-c="1D443" xlink:href="#MJX-1-TEX-I-1D443"></use></g></g></g><g data-mml-node="mstyle" transform="translate(11697.8,0)"><g data-mml-node="mspace"></g></g><g data-mml-node="mrow" transform="translate(11697.5,0)"><g data-mml-node="mo"><use data-c="5B" xlink:href="#MJX-1-TEX-N-5B"></use></g><g data-mml-node="mi" transform="translate(278,0)"><use data-c="2113" xlink:href="#MJX-1-TEX-I-2113"></use></g><g data-mml-node="mo" transform="translate(695,0)"><use data-c="28" xlink:href="#MJX-1-TEX-N-28"></use></g><g data-mml-node="mi" transform="translate(1084,0)"><use data-c="1D453" xlink:href="#MJX-1-TEX-I-1D453"></use></g><g data-mml-node="mo" transform="translate(1634,0)"><use data-c="28" xlink:href="#MJX-1-TEX-N-28"></use></g><g data-mml-node="mi" transform="translate(2023,0)"><use data-c="1D465" xlink:href="#MJX-1-TEX-I-1D465"></use></g><g data-mml-node="mo" transform="translate(2595,0)"><use data-c="29" xlink:href="#MJX-1-TEX-N-29"></use></g><g data-mml-node="mo" transform="translate(2984,0)"><use data-c="2C" xlink:href="#MJX-1-TEX-N-2C"></use></g><g data-mml-node="mo" transform="translate(3428.7,0)"><use data-c="2212" xlink:href="#MJX-1-TEX-N-2212"></use></g><g data-mml-node="mn" transform="translate(4206.7,0)"><use data-c="31" xlink:href="#MJX-1-TEX-N-31"></use></g><g data-mml-node="mo" transform="translate(4706.7,0)"><use data-c="29" xlink:href="#MJX-1-TEX-N-29"></use></g><g data-mml-node="mo" transform="translate(5095.7,0)"><use data-c="5D" xlink:href="#MJX-1-TEX-N-5D"></use></g></g><g data-mml-node="mo" transform="translate(17071.2,0) translate(0 -0.5)"><use data-c="29" xlink:href="#MJX-1-TEX-LO-29"></use></g></g><g data-mml-node="mo" transform="translate(33218.8,0)"><use data-c="2E" xlink:href="#MJX-1-TEX-N-2E"></use></g></g></g></svg>
+        </div>
+
+        <p>Everything in the nnPU experiments below uses this loss with a logistic surrogate for &ell; and PrimeVul's marginal class prior &pi; = 0.0277 as the default.</p>
     </section>
 
     <!-- ============================================ -->
     <!-- EXPERIMENTS (placeholder) -->
     <!-- ============================================ -->
     <section id="experiments">
-        <h2>Experimental setup</h2>
+        <h2>Experiments</h2>
 
         <h3>Dataset and PU simulation</h3>
 
-        <p>I use PrimeVul v0.1 <a href="#ref_6">[6]</a>, which contains 175,797 training functions (4,862 vulnerable, 170,935 benign), with 23,948 for validation and 24,788 for testing. The splits are chronological: training data comes from older commits, test data from newer ones. PrimeVul also provides 435 matched pairs of vulnerable functions and their patched versions for pairwise evaluation.</p>
+        <p>I use PrimeVul v0.1 <a href="#ref_5">[5]</a>, which contains 175,797 training functions (4,862 vulnerable, 170,935 benign), with 23,948 for validation and 24,788 for testing. The splits are chronological. Training data comes from older commits, test data from newer ones. PrimeVul also provides 435 matched pairs of vulnerable functions and their patched versions for pairwise evaluation.</p>
 
-        <p>To simulate the PU setting, I sample a fraction of the vulnerable training functions as the labeled positive set P. The rest, the remaining vulnerable functions plus all benign functions, becomes U. I strip their labels. At 20% labeling (the default), P contains 972 functions and U contains 174,825 functions, of which 3,890 are hidden vulnerabilities that the model does not know about. The validation and test sets keep their full labels throughout.</p>
-
-        <h3>Representation</h3>
-
-        <p>I tokenize each function's source code and pass it through a frozen CodeBERT model <a href="#ref_7">[7]</a> (microsoft/codebert-base, 125M parameters). I extract the [CLS] token embedding from the final layer, producing a 768-dimensional vector per function. This is done once for all splits.</p>
+        <p>To simulate the PU setting, I sample a fraction of the vulnerable training functions as the labeled positive set P. The rest (remaining vulnerable + all benign) becomes U with labels stripped. At 20% labeling (the default), P contains 972 functions and U contains 174,825, of which 3,890 are hidden vulnerabilities. Validation and test sets keep their full labels throughout.</p>
 
         <h3>Classifier</h3>
 
-        <p>All methods use the same architecture: a 2-layer MLP with a 256-unit hidden layer, ReLU activation, and 30% dropout. The model takes a 768-d embedding and outputs a single logit (sigmoid applied at inference). That is 197,377 parameters. I train with Adam (lr=1e-3) and early stopping on validation F1 score with patience of 5-7 epochs depending on the method.</p>
+        <p>All methods share the same architecture, a 2-layer MLP (256 hidden, ReLU, 30% dropout) that takes a 768-d embedding and outputs a single logit. That is 197,377 parameters, deliberately small. The variation in this study is across PU method and labeling budget, not across model capacity, so the classifier is held fixed across runs.</p>
+
+        <h3>Training and optimization</h3>
+
+        <p>Each method trains with Adam at learning rate 1e-3, batch size 512, up to 30 epochs, with early stopping on validation AUROC at patience 5. The recipe is the same for all four methods so optimization-side differences cannot bias the comparison across PU losses.</p>
+
+        <p>I track training loss and validation AUROC each epoch. Figure 5 shows the four methods' training curves at 20% labeling for seed 42. All four loss curves descend monotonically and plateau within 10 to 15 epochs. On this run the non-negative-clipping term never activated (0 batches clipped), suggesting nnPU produced an unbiased risk estimate throughout training.</p>
+
+        <figure>
+            <a href="#fig-5" class="lightbox-trigger">
+                <img src="./images/nb02_training_curves_cb.png" alt="Training and validation loss curves across the four methods for seed 42 at 20% labeling, showing monotonic descent and plateau within 10 to 15 epochs" style="max-width: 780px; border-radius: 8px; border: 1px solid var(--border);"/>
+            </a>
+            <figcaption>Figure 5. Training curves for the four methods at 20% labeling, seed 42. Loss on the y-axis, epoch on the x-axis. Validation loss tracks training loss closely with the small gap typical of a 30%-dropout MLP on a fixed-feature representation.</figcaption>
+        </figure>
+        <a href="#!" id="fig-5" class="lightbox-modal">
+            <span class="lightbox-close">&times;</span>
+            <img src="./images/nb02_training_curves_cb.png" alt="Figure 5 enlarged"/>
+        </a>
 
         <h3>Methods</h3>
 
@@ -747,45 +821,101 @@
             <tr><th>Method</th><th>Family</th><th>Training signal</th><th>Requires class prior?</th></tr>
             <tr><td>Supervised MLP</td><td>Upper bound</td><td>Full labels (all 175K)</td><td>No</td></tr>
             <tr><td>Naive PU</td><td>Lower bound</td><td>P=1, all U=0</td><td>No</td></tr>
-            <tr><td>nnPU <a href="#ref_2">[2]</a></td><td>Risk estimator</td><td>Separate P and U batches, unbiased PU risk with non-negative correction</td><td>Yes (default: 0.0277)</td></tr>
-            <tr><td>Self-training <a href="#ref_11">[11]</a></td><td>Pseudo-labeling</td><td>Iterative: train on P vs U, score U, select confident negatives, retrain</td><td>No</td></tr>
+            <tr><td>nnPU <a href="#ref_2">[2]</a></td><td>Risk estimator</td><td>Separate P and U batches, risk-estimator loss with a non-negative correction</td><td>Yes (default 0.0277)</td></tr>
+            <tr><td>Self-training <a href="#ref_10">[10]</a></td><td>Pseudo-labeling</td><td>Iterative. Train on P vs U, score U, select confident negatives, retrain</td><td>No</td></tr>
         </table>
 
-        <p>The supervised and naive PU baselines use BCE loss with a positive class weight (n_neg / n_pos) to handle the class imbalance. For nnPU, the loss is the PU risk estimator from Kiryo et al. <a href="#ref_2">[2]</a>, which approximates the binary classification risk from P and U alone, given a class prior estimate. When the negative risk term goes below zero (a known instability), nnPU clips it. For self-training, I run 5 iterations. Each iteration after the first uses the current model to score U and selects the 10% of U with the lowest predicted vulnerability probability as "reliable negatives," then retrains a fresh MLP on P plus these selected negatives.</p>
+        <p>The supervised and naive PU baselines use BCE loss with a positive class weight (n_neg / n_pos) for class imbalance. nnPU uses the risk estimator from Kiryo et al. <a href="#ref_2">[2]</a>, clipping the negative risk term at zero to avoid a known instability. Self-training runs 5 iterations. Each selects the 10% of U with the lowest predicted vulnerability as reliable negatives and retrains a fresh MLP on P plus those.</p>
 
         <h3>Experiments</h3>
 
-        <p>I run three experiments:</p>
+        <p>I run three experiments.</p>
 
         <table>
             <tr><th>Experiment</th><th>What varies</th><th>What is fixed</th><th>Question</th></tr>
             <tr><td>1. Baseline comparison</td><td>Method (all 4)</td><td>20% labeled (P=972), prior=0.0277, 3 seeds</td><td>Which method works best? How close to supervised?</td></tr>
-            <tr><td>2. Labeling budget</td><td>Labeled fraction: 2%-80% (P=97 to P=3,890)</td><td>nnPU + self-training, 3 seeds</td><td>How many labeled positives does PU learning need? Is there a cliff?</td></tr>
+            <tr><td>2. Labeling budget</td><td>Labeled fraction 2%-80% (P=97 to P=3,890)</td><td>nnPU + self-training, 3 seeds</td><td>How many labeled positives does PU learning need? Is there a cliff?</td></tr>
             <tr><td>3. Class prior sensitivity</td><td>Assumed prior (0.5x-2x true)</td><td>nnPU, 20% labeled, 3 seeds</td><td>How wrong can the prior estimate be?</td></tr>
         </table>
 
-        <p>Experiment 2 is the central one. The percentage (2%, 5%, 10%, etc.) is specific to PrimeVul's 4,862 vulnerable functions. The more generalizable quantity is the absolute P count. At 2% labeling, P contains 97 functions. At 5%, 243. At 10%, 486. The labeling curve will show whether there is a smooth degradation or a cliff below which PU learning stops working, and whether nnPU and self-training hit that threshold at different points. I plot both the percentage and the absolute count on the x-axis so the result translates to other datasets. A security team deciding how many findings to label cares about the absolute number, not the fraction of a denominator they do not know.</p>
+        <p>Experiment 2 is the central one. The absolute P count (97, 243, 486 for 2%, 5%, 10% labeling) is what generalizes across datasets, because a security team deciding how many findings to label cares about the count, not the fraction of a denominator they do not know. Figure 7 plots the labeled fraction along the bottom x-axis and the absolute P count along the top, so both views appear in the same panel.</p>
 
-        <p>I also stratify test set results by CWE type (for categories with at least 10 test samples) to see whether syntactically distinctive vulnerability types like buffer overflows (CWE-119) hold up better under PU learning than semantically subtle ones like race conditions (CWE-362). All experiments use 3 random seeds (42, 123, 456) and I report mean and standard deviation.</p>
+        <p>I also stratify test set results by CWE type (for categories with at least 10 test samples) to see whether syntactically distinctive types like buffer overflows (CWE-119) hold up better than semantically subtle ones like race conditions (CWE-362).</p>
+
+        <p>All experiments use 3 random seeds (42, 123, 456) with mean and standard deviation reported. I separate two sources of randomness, the PU split seed (which positives go into P) and the model training seed (weight initialization and batch order). The baseline uses a 3×3 grid of split × model seeds (9 runs per method) to decompose variance. If split dominates, averaged results hide instability.</p>
 
         <h3>Evaluation metrics</h3>
 
-        <p>Following PrimeVul <a href="#ref_6">[6]</a>, I report three metrics:</p>
+        <p>Following PrimeVul <a href="#ref_5">[5]</a>, I report these metrics.</p>
 
         <table>
             <tr><th>Metric</th><th>What it measures</th><th>Direction</th></tr>
-            <tr><td>F1 score</td><td>Harmonic mean of precision and recall at threshold 0.5</td><td>Higher is better</td></tr>
-            <tr><td>VDS</td><td>Miss rate (FNR) at a false positive rate of at most 0.5%. Simulates a deployment constraint where a security team can tolerate at most 1-in-200 false alarms.</td><td>Lower is better</td></tr>
-            <tr><td>Pairwise accuracy</td><td>Given a vulnerable function and its patched version, how often does the model assign higher probability to the vulnerable one?</td><td>Higher is better</td></tr>
+            <tr><td>F1 score</td><td>Harmonic mean of precision and recall, with threshold tuned per method (PU outputs uncalibrated probabilities, so 0.5 is not a meaningful boundary).</td><td>Higher is better</td></tr>
+            <tr><td>AUROC</td><td>Threshold-free area under the ROC curve.</td><td>Higher is better</td></tr>
+            <tr><td>AUPRC</td><td>Area under the PR curve. More informative than AUROC on imbalanced data.</td><td>Higher is better</td></tr>
         </table>
     </section>
 
     <!-- ============================================ -->
-    <!-- RESULTS (placeholder) -->
+    <!-- RESULTS -->
     <!-- ============================================ -->
     <section id="results">
         <h2>Results</h2>
-        <div class="placeholder">Results and figures will be added after experiments are complete.</div>
+
+        <h3>Baseline comparison at 20% labeling</h3>
+
+        <p>The four methods cluster within a few F1 points of supervised, and within each other.</p>
+
+        <p>At 20% labeling (P = 972 labeled positives), supervised training reaches F1 = 0.157 (SD 0.002) and AUROC = 0.821 (SD 0.002) across three seeds. The best PU method is nnPU, at F1 = 0.151 and AUROC = 0.812. The paired gap on AUROC is 0.009 (CI 0.008-0.010, t(2) = 32.0, p = 0.001), small but reliable. Naive PU and self-training cluster just below nnPU. No PU method collapses. Even the weakest is within 0.025 F1 of supervised.</p>
+
+        <figure>
+            <a href="#fig-6" class="lightbox-trigger">
+                <img src="./images/exp1_baseline_comparison.png" alt="Bar chart comparing F1, AUROC, and AUPRC across supervised, naive PU, nnPU, and self-training at 20% labeling" style="max-width: 780px; border-radius: 8px; border: 1px solid var(--border);"/>
+            </a>
+            <figcaption>Figure 6. Baseline comparison at 20% labeling (P = 972). Error bars show SD across three seeds. Supervised leads on all three metrics. The four methods span about 0.025 F1 points.</figcaption>
+        </figure>
+        <a href="#!" id="fig-6" class="lightbox-modal">
+            <span class="lightbox-close">&times;</span>
+            <img src="./images/exp1_baseline_comparison.png" alt="Figure 6 enlarged"/>
+        </a>
+
+        <h3>The labeling curve has no cliff</h3>
+
+        <p>Cutting the labeling budget down to a few hundred positives does not collapse PU performance.</p>
+
+        <p>Varying P from 97 (2% labeling) to 3,889 (80% labeling) for the three PU methods produces a smooth degradation rather than a collapse. A piecewise linear fit of F1 against log P places the change-point at P = 243 (5% labeling), not the 10% the eyeballed table had suggested. Below 5%, F1 gains per doubling of P are roughly twice what they are above. AUROC plateaus around 20% labeling, barely moving between P = 972 and P = 3,889. nnPU is the strongest PU method at every labeling fraction tested. The VulBERTa panel in Figure 7 shows the same curve shape, with F1 shifted up by 0.01-0.03 points. The method ordering is preserved.</p>
+
+        <figure>
+            <a href="#fig-7" class="lightbox-trigger">
+                <img src="./images/nb03_labeling_curves.png" alt="Four-panel labeling curve showing F1 and AUROC as a function of labeled fraction for CodeBERT and VulBERTa embeddings" style="max-width: 780px; border-radius: 8px; border: 1px solid var(--border);"/>
+            </a>
+            <figcaption>Figure 7. Labeling sweep from 2% to 80% labeled. Top row shows CodeBERT, bottom row shows VulBERTa. Dashed line marks supervised performance at full labels. The change-point in F1 is visible at P = 243, marked on the upper x-axis.</figcaption>
+        </figure>
+        <a href="#!" id="fig-7" class="lightbox-modal">
+            <span class="lightbox-close">&times;</span>
+            <img src="./images/nb03_labeling_curves.png" alt="Figure 7 enlarged"/>
+        </a>
+
+        <h3>nnPU is robust to prior misspecification</h3>
+
+        <p>Getting the prior wrong by a factor of two costs almost nothing.</p>
+
+        <p>nnPU requires a class-prior estimate. Sweeping from 0.5× to 2× the true prior (0.0277) moves F1 by about 0.01 and AUROC by less than 0.01, both within the seed-to-seed noise. A practitioner who estimates the prior within a factor of two of truth loses almost nothing in predictive performance.</p>
+
+        <figure>
+            <a href="#fig-8" class="lightbox-trigger">
+                <img src="./images/nb04_prior_sensitivity.png" alt="Two-panel plot of F1 and AUROC as a function of the assumed class prior, with shaded seed variance" style="max-width: 780px; border-radius: 8px; border: 1px solid var(--border);"/>
+            </a>
+            <figcaption>Figure 8. nnPU sensitivity to the class prior hyperparameter. The vertical line marks the true prior. Shading is the seed range. The curve is flat enough that getting the prior exactly right is not important.</figcaption>
+        </figure>
+        <a href="#!" id="fig-8" class="lightbox-modal">
+            <span class="lightbox-close">&times;</span>
+            <img src="./images/nb04_prior_sensitivity.png" alt="Figure 8 enlarged"/>
+        </a>
+
+        <h3>Per-CWE stratification</h3>
+
+        <p>Pooling test CWEs into memory-safety (n = 271), logic/semantic (n = 145), and concurrency (n = 10) and comparing supervised to nnPU across five seeds gives relative recall drops of 12% (SD 13%) for memory safety and 3% (SD 21%) for logic/semantic. The paired difference is 9% (t(4) = 1.5, p = 0.20). The point estimate runs against the hypothesis (memory safety drops more, not less), but the difference is not statistically distinguishable from zero, and n = 5 cannot rule out either direction. Concurrency has too few test samples to compare.</p>
     </section>
 
     <!-- ============================================ -->
@@ -793,7 +923,58 @@
     <!-- ============================================ -->
     <section id="discussion">
         <h2>Discussion</h2>
-        <div class="placeholder">Discussion and analysis will be added after results are interpreted.</div>
+
+        <h3>Why self-training fails, even with better embeddings</h3>
+
+        <p>Self-training underperforms nnPU at every labeling fraction. A reasonable suspicion is that CodeBERT embeddings aren't good enough for pseudo-labeling to bootstrap from, and that a vulnerability-aware encoder would rescue it. VulBERTa is the cleanest test of that suspicion. Every seed × method pair improved (12 of 12, two-sided sign-test p = 0.0005), with F1 gains of 10% to 24%, but the method ordering did not change. Self-training was still worst. The failure is algorithmic rather than representational. The pseudo-labeling loop propagates errors from a ranker whose AUROC starts around 0.81, and a better encoder does not save it.</p>
+
+        <h3>What the hypothesis got right and wrong</h3>
+
+        <p>The hypothesis had three clauses, and the evidence splits them unevenly. The first clause, that there is a labeling threshold "below which PU learning collapses," fails in the strong form. No method collapses anywhere in the sweep, and the weakest PU method still holds F1 ≈ 0.11 at P = 97. A weaker version holds. Piecewise linear regression finds a knee at P = 243 (SSE reduced 97% against a single-slope fit), where the per-doubling F1 gain drops by more than half. The second clause, that risk estimators and pseudo-labeling differ, is supported more strongly than predicted. nnPU degrades smoothly through a knee while self-training never enters a comparable recovery regime. The third clause, that memory-safety CWEs would hold up better than logic/semantic ones, is not supported (see per-CWE stratification above).</p>
+
+        <h3>The ceiling is the representation</h3>
+
+        <p>Every result above sits under a frozen-encoder ceiling. CodeBERT gives a miss rate of 0.96 at a 0.5% false positive rate, and pairwise accuracy on held-out vulnerable/benign pairs is 0.25 (below the 0.5 chance rate). The UMAP projection in Figure 11 shows why. Vulnerable and benign functions overlap heavily. VulBERTa narrows the gap but does not cross F1 = 0.20 at full labels. The goal here was PU learning on a fixed representation, not state-of-the-art vulnerability detection. A practitioner who fine-tunes the encoder might see larger gains than any PU method choice delivers.</p>
+
+        <figure>
+            <a href="#fig-11" class="lightbox-trigger">
+                <img src="./images/nb01_umap_comparison.png" alt="UMAP projection of CodeBERT and VulBERTa embeddings colored by vulnerability label, showing heavy overlap between classes" style="max-width: 780px; border-radius: 8px; border: 1px solid var(--border);"/>
+            </a>
+            <figcaption>Figure 11. UMAP projections of CodeBERT (left) and VulBERTa (right) embeddings, colored by label. VulBERTa separates the classes slightly better, but the overlap is still substantial.</figcaption>
+        </figure>
+        <a href="#!" id="fig-11" class="lightbox-modal">
+            <span class="lightbox-close">&times;</span>
+            <img src="./images/nb01_umap_comparison.png" alt="Figure 11 enlarged"/>
+        </a>
+
+        <h3>Was machine learning the right tool here</h3>
+
+        <p>Yes, with caveats. Hand-written rules and shallow features such as token n-grams cannot capture function-level vulnerability semantics at PrimeVul's scale, and some kind of learned representation is doing real work in any approach that gets above F1 = 0.10 on this benchmark. Where the question gets interesting is at the margin. CodeBERT does most of the lifting in this study, and switching to VulBERTa, a model pretrained on C/C++, lifts every method's F1 by 12% to 25% without changing the ranking. The PU choice on top of that representation matters less. A practitioner should weigh the cost of running a code-pretrained encoder against the small marginal gain of choosing nnPU over naive PU. The encoder is the value, and PU is the housekeeping that lets you train on the labels you actually have.</p>
+
+    </section>
+
+    <!-- ============================================ -->
+    <!-- ETHICS -->
+    <!-- ============================================ -->
+    <section id="ethics">
+        <h2>Ethics and broader implications</h2>
+
+        <p>This work is dual-use. The same scanner that helps a defender clear a triage queue helps an attacker pick targets, and the two sides are not playing the same game. A defender wades through ninety-nine false positives for the hundredth real bug to pay off. An attacker only needs one true hit.</p>
+
+        <p>That gap has gotten worse over the past two years. Large language models have made the path between "this function looks suspicious" and a working exploit much shorter than it used to be. What was a skilled researcher's afternoon is now a prompt or two. Anyone publishing in vulnerability detection is contributing to attack tooling whether they mean to or not, and a methodological disclaimer does not change that. Comparing PU paradigms on a public benchmark instead of shipping a deployable scanner is a partial hedge.</p>
+    </section>
+
+    <!-- ============================================ -->
+    <!-- CONCLUSION -->
+    <!-- ============================================ -->
+    <section id="conclusion">
+        <h2>Conclusion</h2>
+
+        <p>Does PU learning work for vulnerability detection? On this data, yes. nnPU stays within 0.01 AUROC of full supervision down to a few hundred labels, and getting the prior wrong by a factor of two costs almost nothing. The labeling curve has no cliff. A security team with a few hundred confirmed bugs out of a triaged thousand can pick nnPU and move on. Self-training will not rescue a weak ranker.</p>
+
+        <p>The result comes with two qualifications. nnPU and self-training are not in the same league. Self-training fails at every labeling fraction tested, and VulBERTa's 12-of-12 lift across method and seed combinations made it clear the failure is algorithmic, not a representation problem. Picking the right family matters more than tuning within one. The other qualification is that the absolute numbers are not great. F1 lands around 0.15, and pairwise accuracy on patched pairs is below the 0.5 chance rate. The ceiling here is the representation, not the labels. Anyone who fine-tunes the encoder might see larger gains than any PU method choice delivers.</p>
+
+        <p>nnPU is a valid method for sparsely labeled vulnerability data, in the narrow sense that it does about as well as full supervision can on this representation. Whether that is good enough to deploy depends on the encoder, not the method.</p>
     </section>
 
     <!-- ============================================ -->
@@ -804,16 +985,16 @@
         <ol>
             <li id="ref_1">du Plessis, M. C., Niu, G., &amp; Sugiyama, M. (2015). Convex Formulation for Learning from Positive and Unlabeled Data. <em>ICML</em>, 1386&ndash;1394.</li>
             <li id="ref_2">Kiryo, R., Niu, G., du Plessis, M. C., &amp; Sugiyama, M. (2017). Positive-Unlabeled Learning with Non-Negative Risk Estimator. <em>NeurIPS</em>, 30.</li>
-            <li id="ref_3">Dai, S., Li, X., Zhou, Y., Ye, X., &amp; Liu, T. (2023). GradPU: Positive-Unlabeled Learning via Gradient Penalty and Positive Upweighting. <em>AAAI</em>, 37(6), 7296&ndash;7303.</li>
-            <li id="ref_4">Li, Y., Wang, S., &amp; Nguyen, T. N. (2023). When Less is Enough: Positive and Unlabeled Learning Model for Vulnerability Detection. <em>ASE</em>, 345&ndash;357.</li>
-            <li id="ref_5">A Closer Look to Positive-Unlabeled Learning from Fine-grained Perspectives: An Empirical Study. (2025). <em>NeurIPS</em>, 38. <a href="https://openreview.net/forum?id=gioV0q55AJ">OpenReview</a>.</li>
-            <li id="ref_6">Ding, Y., et al. (2025). Vulnerability Detection with Code Language Models: How Far Are We? <em>ICSE</em>.</li>
-            <li id="ref_7">Feng, Z., et al. (2020). CodeBERT: A Pre-Trained Model for Programming and Natural Languages. <em>Findings of EMNLP</em>, 1536&ndash;1547.</li>
-            <li id="ref_8">Zhou, Y., et al. (2019). Devign: Effective Vulnerability Identification by Learning Comprehensive Program Semantics via Graph Neural Networks. <em>NeurIPS</em>, 32.</li>
-            <li id="ref_9">Fu, M. &amp; Tantithamthavorn, C. (2022). LineVul: A Transformer-based Line-Level Vulnerability Prediction. <em>MSR</em>, 608&ndash;620.</li>
-            <li id="ref_10">Chakraborty, S., et al. (2022). Deep Learning based Vulnerability Detection: Are We There Yet? <em>IEEE TSE</em>, 48(9), 3280&ndash;3296.</li>
-            <li id="ref_11">Liu, B., et al. (2003). Building Text Classifiers Using Positive and Unlabeled Examples. <em>ICDM</em>, 179&ndash;186.</li>
-            <li id="ref_12">Bekker, J. &amp; Davis, J. (2020). Learning from Positive and Unlabeled Data: A Survey. <em>Machine Learning</em>, 109, 719&ndash;760.</li>
+            <li id="ref_3">Wen, X.-C., Wang, X., Gao, C., Wang, S., Liu, Y., &amp; Gu, Z. (2023). When Less is Enough: Positive and Unlabeled Learning Model for Vulnerability Detection. <em>ASE</em>, 345&ndash;357.</li>
+            <li id="ref_4">Dai, Y., Hou, Z., Li, C., Xu, Y., Wang, E., &amp; Li, X. (2025). A Closer Look to Positive-Unlabeled Learning from Fine-grained Perspectives: An Empirical Study. <em>NeurIPS</em>, 38. <a href="https://openreview.net/forum?id=gioV0q55AJ">OpenReview</a>.</li>
+            <li id="ref_5">Ding, Y., et al. (2025). Vulnerability Detection with Code Language Models: How Far Are We? <em>ICSE</em>.</li>
+            <li id="ref_6">Feng, Z., et al. (2020). CodeBERT: A Pre-Trained Model for Programming and Natural Languages. <em>Findings of EMNLP</em>, 1536&ndash;1547.</li>
+            <li id="ref_7">Zhou, Y., et al. (2019). Devign: Effective Vulnerability Identification by Learning Comprehensive Program Semantics via Graph Neural Networks. <em>NeurIPS</em>, 32.</li>
+            <li id="ref_8">Fu, M. &amp; Tantithamthavorn, C. (2022). LineVul: A Transformer-based Line-Level Vulnerability Prediction. <em>MSR</em>, 608&ndash;620.</li>
+            <li id="ref_9">Chakraborty, S., et al. (2022). Deep Learning based Vulnerability Detection: Are We There Yet? <em>IEEE TSE</em>, 48(9), 3280&ndash;3296.</li>
+            <li id="ref_10">Liu, B., et al. (2003). Building Text Classifiers Using Positive and Unlabeled Examples. <em>ICDM</em>, 179&ndash;186.</li>
+            <li id="ref_11">Bekker, J. &amp; Davis, J. (2020). Learning from Positive and Unlabeled Data: A Survey. <em>Machine Learning</em>, 109, 719&ndash;760.</li>
+            <li id="ref_12">Hanif, H. &amp; Maffeis, S. (2022). VulBERTa: Simplified Source Code Pre-Training for Vulnerability Detection. <em>IJCNN</em>, 1&ndash;8.</li>
         </ol>
     </section>
 

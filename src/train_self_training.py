@@ -30,7 +30,7 @@ from model import VulnMLP
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
 
-EMBEDDING_DIR = Path("data/processed/embeddings")
+import os; EMBEDDING_DIR = Path(os.environ.get("EMBEDDING_DIR", "data/processed/embeddings"))
 SPLIT_DIR = Path("data/processed")
 CHECKPOINT_DIR = Path("checkpoints")
 
